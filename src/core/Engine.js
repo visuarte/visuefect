@@ -90,8 +90,9 @@ export class VisualEngine {
         this._pixiUpdaters = [];
 
         // expose viewport and mojs container references
-        this.viewport = document.querySelector('#viewport');
-        this.mojsContainer = document.querySelector(this.containers.mojs) || (function(){ const d=document.createElement('div'); d.id='mojs-overlay'; document.querySelector('#viewport').appendChild(d); return d; })();
+        // Ensure a viewport element exists for headless/test environments
+        this.viewport = document.querySelector('#viewport') || (function(){ const v = document.createElement('div'); v.id = 'viewport'; document.body.appendChild(v); return v; })();
+        this.mojsContainer = document.querySelector(this.containers.mojs) || (function(){ const d=document.createElement('div'); d.id='mojs-overlay'; (this.viewport || document.body).appendChild(d); return d; }).call(this);
 
         // 3. Mo.js Bridge
         // Stretch Goal: Forzamos a mojs a no usar su propio rAF si es posible
