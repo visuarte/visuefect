@@ -1,0 +1,30 @@
+{
+  "name": "visuefect",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18 <=24"
+  },
+  "scripts": {
+    "setup": "npm ci",
+    "check": "npm run lint --silent || true",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "audit:fix": "npm audit fix",
+    "test": "vitest",
+    "audit:deep": "node ./scripts/audit.js"
+  },
+  "dependencies": {
+    "@mojs/core": "^1.7.1",
+    "pixi.js": "^8.16.0",
+    "three": "^0.182.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "jsdom": "^28.0.0",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
+  }
+}
