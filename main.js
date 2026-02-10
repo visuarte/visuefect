@@ -97,7 +97,7 @@ async function main() {
   function _showTemporaryGhost(cx, cy) {
     // pixi ghost
     try {
-      const g = new PIXI.Graphics(); g.beginFill(0x00f0ff, 0.12); g.drawCircle(0,0,48); g.endFill(); g.x = cx; g.y = cy; g.alpha = 0.95; g.blendMode = PIXI.BLEND_MODES.ADD; engine.pixiRoot.addChild(g);
+      const g = new PIXI.Graphics(); try { g.fill({ color: 0x00f0ff, alpha: 0.12 }); g.circle(0,0,48); } catch (e) { g.beginFill(0x00f0ff, 0.12); g.drawCircle(0,0,48); g.endFill(); } g.x = cx; g.y = cy; g.alpha = 0.95; g.blendMode = PIXI.BLEND_MODES.ADD; engine.pixiRoot.addChild(g);
       setTimeout(()=>{ try{ g.parent && g.parent.removeChild(g); g.destroy?.(); } catch(e){} }, 1200);
     } catch (e) {}
     // three ghost

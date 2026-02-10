@@ -147,7 +147,7 @@ pixiApp.stage.sortableChildren = true;
 const pixiRoot = new PIXI.Container(); pixiApp.stage.addChild(pixiRoot);
 
 function spawnParticle(x,y){
-  const g=new PIXI.Graphics(); g.beginFill(Number('0x' + '${pixiColor}'.replace('#','')),1); g.drawCircle(0,0,${pixiRadius}); g.endFill(); g.x=x; g.y=y; g.vx=(Math.random()-0.5)*2; g.vy=(Math.random()-0.5)*2-0.6; g.life=80+Math.floor(Math.random()*60); g.alpha=1; g.scale.set(0.8+Math.random()*0.6); pixiRoot.addChild(g); return g;
+  const g=new PIXI.Graphics(); try { g.fill({ color: Number('0x' + '${pixiColor}'.replace('#','')), alpha: 1 }); g.circle(0,0,${pixiRadius}); } catch (e) { g.beginFill(Number('0x' + '${pixiColor}'.replace('#','')),1); g.drawCircle(0,0,${pixiRadius}); g.endFill(); } g.x=x; g.y=y; g.vx=(Math.random()-0.5)*2; g.vy=(Math.random()-0.5)*2-0.6; g.life=80+Math.floor(Math.random()*60); g.alpha=1; g.scale.set(0.8+Math.random()*0.6); pixiRoot.addChild(g); return g;
 }
 
 // --- MOJS ---
