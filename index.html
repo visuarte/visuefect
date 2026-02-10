@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VISUEFECT — Visual FX Studio</title>
+  <meta name="description" content="VISUEFECT — estudio de efectos visuales (layout split-screen, cyberpunk minimal).">
+  <style>
+    :root{
+      --bg:#07070b; --panel:#0f1020; --card:#151623;
+      --cyan:#00f0ff; --mag:#ff00a0; --accent:#8b63ff; --muted:#9aa0ad; --glass:rgba(255,255,255,0.03);
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body,#app{height:100%}
+    body{font-family:Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:var(--bg); color:#fff}
+
+    /* Split layout */
+    .app{display:grid;grid-template-columns:320px 1fr;min-height:100vh}
+
+    /* Sidebar */
+    .sidebar{background:linear-gradient(180deg,var(--panel),#0b0b12);padding:18px 16px;display:flex;flex-direction:column;gap:12px;border-right:1px solid rgba(0,240,255,0.06);position:relative}
+    .brand{font-weight:700;letter-spacing:4px;color:transparent;background:linear-gradient(90deg,var(--cyan),var(--mag));-webkit-background-clip:text;font-size:20px}
+    .brand small{display:block;font-weight:600;letter-spacing:6px;color:var(--muted);font-size:11px;margin-top:6px}
+
+    .controls{flex:1;overflow:auto;padding-right:6px}
+    .section{margin-bottom:14px}
+    .section h4{font-size:11px;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+    .card{background:linear-gradient(180deg,var(--card),rgba(0,0,0,0.15));padding:12px;border-radius:8px;border:1px solid var(--glass)}
+
+    label{font-size:12px;color:var(--muted);display:block;margin-bottom:8px}
+    input[type=range]{width:100%}
+    .row{display:flex;gap:8px}
+    .muted{font-size:12px;color:var(--muted)}
+
+    /* Drag zone */
+    .drag-zone{margin-top:8px;padding:18px;border-radius:10px;border:2px dashed rgba(0,240,255,0.12);text-align:center;background:linear-gradient(180deg,transparent,rgba(0,240,255,0.01));cursor:pointer}
+    .drag-zone:hover{box-shadow:0 6px 24px rgba(0,240,255,0.04);border-color:rgba(255,0,160,0.14)}
+    .drag-zone .icon{font-size:28px;color:var(--cyan);margin-bottom:8px}
+
+    /* Viewport */
+    .viewport{position:relative;overflow:hidden;background:linear-gradient(180deg,#05050a,transparent)}
+    #viewport{position:absolute;inset:0}
+    canvas,#mojs-overlay{position:absolute;inset:0;width:100%;height:100%}
+    #three-canvas{z-index:1;background:transparent}
+    #pixi-canvas{z-index:2;pointer-events:none}
+    #mojs-overlay{z-index:3;pointer-events:none;display:flex;align-items:flex-end;justify-content:flex-start;padding:20px}
+
+    /* subtle grid */
+    .viewport::after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(0,240,255,0.02) 1px, transparent 1px),linear-gradient(90deg,rgba(255,0,160,0.01) 1px,transparent 1px);background-size:48px 48px;mix-blend-mode:screen;pointer-events:none}
+
+    /* accents */
+    .corner{position:absolute;width:46px;height:46px;border:1px solid rgba(0,240,255,0.12);z-index:10}
+
+    /* status */
+    .status{font-size:12px;display:flex;justify-content:space-between;align-items:center;padding:10px 0;color:var(--muted)}
+
+    /* responsive */
+    @media (max-width:840px){.app{grid-template-columns:1fr;grid-template-rows:auto 1fr}.sidebar{order:0;max-height:40vh;border-right:none;border-bottom:1px solid rgba(0,240,255,0.04)}
+    .viewport{min-height:60vh}}
+
+    /* Stepper visual helpers */
+    .ve-step-hidden { opacity: 0.28; pointer-events: none; filter: blur(0.3px); transition: opacity .25s, transform .2s; }
+    .ve-step-highlight { box-shadow: 0 8px 30px rgba(0,240,255,0.06); transform: translateY(-2px); transition: transform .2s; border-left: 3px solid rgba(0,240,255,0.12); }
+
+    /* Performance warning */
+    #perf-warning { position: fixed; right: 24px; bottom: 24px; background: linear-gradient(90deg,#ff5aa0,#ff0066); color: #fff; padding: 12px 14px; border-radius: 8px; z-index: 9999; font-weight:700; box-shadow:0 8px 30px rgba(255,10,100,0.12); display:none; }
+    #perf-warning.show { display:block; animation: perfPulse 1s infinite; }
+    @keyframes perfPulse { 0% { transform: translateY(0);} 50% { transform: translateY(-4px);} 100% { transform: translateY(0);} }
+  </style>
+</head>
+<body>
+  <div id="app" class="app" role="application" aria-label="VISUEFECT">
+    <aside class="sidebar" aria-label="Panel de control">
+      <div class="brand">VISUEFECT<small>Visual FX Studio</small></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="step-btn btn" data-step="1">Atmosphere</button>
+        <button class="step-btn btn" data-step="2">Dynamics</button>
+        <button class="step-btn btn" data-step="3">Accents</button>
+      </div>
+
+      <div class="controls" role="region" aria-label="Parámetros de efectos">
+        <div class="section">
+          <h4>Parámetros</h4>
+          <div class="card">
+            <label for="intensity">Intensidad</label>
+            <input id="intensity" type="range" min="0" max="100" value="50">
+          </div>
+        </div>
+
+        <div class="section row">
+          <div style="flex:1" class="card">
+            <label for="speed">Velocidad</label>
+            <input id="speed" type="range" min="0" max="100" value="30">
+          </div>
+          <div style="width:110px" class="card">
+            <label for="mode">Modo</label>
+            <select id="mode" style="width:100%">
+              <option>Normal</option>
+              <option>Multiplicar</option>
+              <option>Aditivo</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="card">
+            <label for="baseColor">Color base</label>
+            <input id="baseColor" type="color" value="#00f0ff" style="height:38px;width:100%">
+            <div class="muted" style="margin-top:8px">Drag & drop para importar texturas o presets</div>
+          </div>
+        </div>
+
+        <div id="dragZone" class="drag-zone" role="button" tabindex="0" aria-label="Zona de arrastre">
+          <div class="icon">📁</div>
+          <div class="muted">Arrastra items aquí — soltar para importar</div>
+        </div>
+
+        <!-- Quick Drag Items -->
+        <div class="card" style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+          <div class="muted">Items</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn" data-drag-item="lines" data-drag-type="fx">FX Lines</button>
+            <button class="btn" data-drag-item="star" data-drag-type="fx">FX Star</button>
+            <button class="btn" data-drag-item="particle" data-drag-type="particle">Particle</button>
+            <button class="btn" data-drag-item="three-clone" data-drag-type="three">Clone 3D</button>
+            <button id="force-preview" class="btn" title="Force preview: spawn all effects">Force Preview</button>
+          </div>
+
+          <div class="muted" style="font-size:12px">Control: Añadir / Quitar / Resetear efectos</div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+            <div style="display:flex;gap:8px;align-items:center"><strong style="width:80px">Particles</strong><button id="add-pixi" class="btn">+</button><button id="sub-pixi" class="btn">-</button><button id="reset-pixi" class="btn">Reset</button><span style="margin-left:auto" id="pixi-count">0</span></div>
+            <div style="display:flex;gap:8px;align-items:center"><strong style="width:80px">Accents</strong><button id="add-mojs" class="btn">+</button><button id="sub-mojs" class="btn">-</button><button id="reset-mojs" class="btn">Reset</button><span style="margin-left:auto" id="mojs-count">0</span></div>
+            <div style="display:flex;gap:8px;align-items:center"><strong style="width:80px">3D</strong><button id="add-three" class="btn">+</button><button id="sub-three" class="btn">-</button><button id="reset-three" class="btn">Reset</button><span style="margin-left:auto" id="three-count">0</span></div>
+          </div>
+        </div>
+
+        <!-- Code Generator Console -->
+        <div class="card" style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+            <div class="muted">Snapshot / Export</div>
+            <div style="display:flex;gap:8px">
+              <button id="generate-code" class="btn">Generar Código</button>
+              <button id="copy-code" class="btn">Copiar</button>
+            </div>
+          </div>
+          <textarea id="code-output" readonly style="width:100%;height:130px;margin-top:8px;font-family:monospace;font-size:11px;background:#05050a;color:#dbeaff;border-radius:6px;padding:8px;border:none"></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px"><button id="export-video" class="btn">Exportar 5s</button></div>
+        </div>
+      </div>
+
+      <div class="status" aria-hidden="false"><div><span style="display:inline-block;width:10px;height:10px;background:var(--cyan);border-radius:50%;box-shadow:0 0 8px var(--cyan);margin-right:8px"></span>SISTEMA ACTIVO</div><div class="muted" id="fps">60 FPS</div></div>
+
+      <!-- Error / Toast container -->
+      <div id="app-toast" aria-live="polite" style="position:fixed;left:24px;bottom:24px;display:none;z-index:9999"></div>
+    </aside>
+
+    <main class="viewport" aria-label="Vista previa">
+      <div id="viewport" aria-hidden="false">
+        <canvas id="three-canvas" aria-label="ThreeJS layer"></canvas>
+        <canvas id="pixi-canvas" aria-label="PixiJS layer"></canvas>
+        <div id="mojs-overlay" aria-live="polite"></div>
+      </div>
+
+      <div class="corner" style="top:18px;left:18px"></div>
+      <div class="corner" style="top:18px;right:18px"></div>
+      <div class="corner" style="bottom:18px;left:18px"></div>
+      <div class="corner" style="bottom:18px;right:18px"></div>
+    </main>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
