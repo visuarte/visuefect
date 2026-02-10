@@ -11,6 +11,8 @@ describe('MojsEffects integration', () => {
     mojs = MojsEffects(engine);
   });
 
+  afterEach(() => { try { engine && engine.destroy && engine.destroy(); } catch (e) {} });
+
   it('trigger creates and registers burst effects', () => {
     const before = (engine.mojsItems||[]).length;
     mojs.trigger('lines', 100, 100);

@@ -15,9 +15,8 @@ export default function PixiParticles(engine, opts = {}) {
   function spawn(x, y) {
     const g = new PIXI.Graphics();
     const r = cfg.spawnRadius * (0.6 + Math.random() * 1.4);
-    g.beginFill(cfg.color, 1);
-    g.drawCircle(0, 0, r);
-    g.endFill();
+    // Use new Pixi v8 API: fill() + circle() instead of deprecated beginFill/drawCircle/endFill
+    try { g.fill({ color: cfg.color, alpha: 1 }); g.circle(0, 0, r); } catch (e) { /* fallback for older pixi */ g.beginFill(cfg.color, 1); g.drawCircle(0, 0, r); g.endFill(); }
     g.x = x; g.y = y;
     g.vx = (Math.random() - 0.5) * 2;
     g.vy = (Math.random() - 0.5) * 2 - 0.6;
@@ -68,7 +67,7 @@ export default function PixiParticles(engine, opts = {}) {
     }
   }
 
-  engine.addPixiUpdater(updater);
+  if (typeof engine.addPixiUpdater === 'function') engine.addPixiUpdater(updater); else { if (!engine._pixiUpdaters) engine._pixiUpdaters = []; engine._pixiUpdaters.push(updater); }
 
   return {
     spawnAt(x, y) { spawn(x, y); },

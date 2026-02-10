@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import * as PIXI from 'pixi.js';
+import logger from '../utils/logger.js';
 
 /**
  * DragSystem — Smart parser for drag&drop with Ghost previews
@@ -136,8 +137,8 @@ export default class DragSystem {
       return;
     }
 
-    // fallback: log
-    console.log('Dropped unknown payload', data, { x, y });
+    // fallback: log via logger
+    logger.warn('Dropped unknown payload', { data, x, y });
   }
 
   // ---------- Inference ----------
@@ -257,7 +258,8 @@ export default class DragSystem {
   _ensureGhost2D() {
     if (this._ghost2D) return;
     const g = new PIXI.Graphics();
-    g.beginFill(0x00f0ff, 0.12); g.drawCircle(0, 0, 36); g.endFill();
+    // Pixi v8 API: prefer fill() + circle(); fall back to deprecated methods when necessary
+    try { g.fill({ color: 0x00f0ff, alpha: 0.12 }); g.circle(0, 0, 36); } catch (e) { g.beginFill(0x00f0ff, 0.12); g.drawCircle(0, 0, 36); g.endFill(); }
     g.alpha = 0.9; g.zIndex = 9999; g.renderable = true; g.blendMode = (PIXI.BLEND_MODES && PIXI.BLEND_MODES.ADD) || 0;
     if (this.pixiParticles && this.pixiParticles.pixiRoot) this.pixiParticles.pixiRoot.addChild(g); else if (this.engine.pixiApp) this.engine.pixiApp.stage.addChild(g);
     this._ghost2D = g;

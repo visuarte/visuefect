@@ -16,6 +16,8 @@ describe('DragSystem ghost previews', () => {
     drag.init();
   });
 
+  afterEach(() => { try { drag && drag.destroy && drag.destroy(); } catch (e) {} ; try { engine && engine.destroy && engine.destroy(); } catch (e) {} });
+
   it('creates a 2D ghost when ensuring ghost2D', () => {
     drag._ensureGhost2D();
     expect(drag._ghost2D).toBeTruthy();
