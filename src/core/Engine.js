@@ -397,7 +397,7 @@ export class VisualEngine {
         } catch (e) { console.warn('resize failed', e); }
     }
 
-    async exportVideo(durationFrames = 300) {
+    async exportVideo(durationFrames = 300, { muxer = null } = {}) {
         logger.info("🎬 Iniciando Exportación Determinista...");
         const frames = [];
         const compositeCanvas = document.createElement('canvas');
@@ -407,16 +407,37 @@ export class VisualEngine {
         const W = this._W || 800; const H = this._H || 600;
         compositeCanvas.width = W; compositeCanvas.height = H;
 
+        // If a muxer instance is provided, we'll push frames into it and finalize at the end.
+        const usingMuxer = !!muxer;
+
         await this.sync.renderFrames(durationFrames, (frameIndex) => {
             // Dibujamos las 3 capas en el canvas de composición
             ctx.clearRect(0, 0, compositeCanvas.width, compositeCanvas.height);
             try { ctx.drawImage(this.renderer.domElement, 0, 0, W, H); } catch (e) {}
             try { ctx.drawImage(this.pixiApp.view, 0, 0, W, H); } catch (e) {}
             // Mo.js es SVG/DOM, requiere un paso extra (SVG -> Canvas)
-            
-            // Aquí capturaríamos el frame (WebCodecs o Array de Blobs)
+
+            // Capture frame: either record to frames array or pass to muxer
+            if (usingMuxer) {
+                try { muxer.addFrame(compositeCanvas); } catch (e) { this._logError(e); }
+            } else {
+                try { frames.push(compositeCanvas.toDataURL()); } catch (e) { frames.push(null); }
+            }
             logger.info(`Frame ${frameIndex} capturado.`);
         });
+
+        if (usingMuxer) {
+            try {
+                const blob = await muxer.finalize();
+                return blob;
+            } catch (e) {
+                this._logError(e);
+                // If finalize fails, return the raw frames as a fallback
+                return { error: e, framesCount: (muxer && typeof muxer.frameCount === 'function') ? muxer.frameCount() : frames.length };
+            }
+        }
+
+        return frames;
     }
 
     addPixiUpdater(fn) { if (!this._pixiUpdaters) this._pixiUpdaters = []; this._pixiUpdaters.push(fn); return fn; }

@@ -13,12 +13,13 @@
  */
 
 export default class WebMMuxer {
-  constructor({ width = 800, height = 600, fps = 30 } = {}) {
+  constructor({ width = 800, height = 600, fps = 30, mockOutput = false } = {}) {
     this.width = width;
     this.height = height;
     this.fps = fps;
     this._frames = [];
     this._closed = false;
+    this.mockOutput = !!mockOutput;
   }
 
   // Add a frame. Accepts Canvas, ImageBitmap, ImageData, or Blob/Buffer
@@ -33,6 +34,18 @@ export default class WebMMuxer {
   async finalize() {
     if (this._closed) throw new Error('Muxer already finalized');
     this._closed = true;
+    // If running in mock mode, return a small blob containing metadata for tests
+    if (this.mockOutput) {
+      const payload = JSON.stringify({ frames: this._frames.length, width: this.width, height: this.height, fps: this.fps });
+      // In jsdom/Node tests, Blob is available via jsdom; fallback to simple object if not
+      try {
+        const b = new Blob([payload], { type: 'application/webm' });
+        return Promise.resolve(b);
+      } catch (e) {
+        return Promise.resolve({ type: 'application/webm', size: payload.length, text: async () => payload });
+      }
+    }
+
     // Placeholder behavior: reject to indicate not implemented
     return Promise.reject(new Error('WebM muxer not implemented; this is a skeleton.'));
   }
