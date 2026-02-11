@@ -5,6 +5,7 @@ import CodeExporter from './src/utils/CodeExporter.js';
 import PixiParticles from './src/components/PixiParticles.js';
 import MojsEffects from './src/components/MojsEffects.js';
 import DragSystem from './src/ui/DragSystem.js';
+import * as Presets from './src/utils/presets.js';
 
 async function main() {
   // create engine and start SyncBridge
@@ -30,6 +31,11 @@ async function main() {
   // Drag system (ghost previews)
   const drag = new DragSystem(engine, { pixiParticles, mojsEffects });
   drag.init();
+
+  // Presets utility (persisted in localStorage)
+  window.__VISUEFECT_PRESETS = Presets;
+  // render presets into UI
+  try { ui._renderPresets && ui._renderPresets(); } catch (e) {}
 
   // Code exporter hooks
   const genBtn = document.getElementById('generate-code');

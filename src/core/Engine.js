@@ -62,38 +62,50 @@ export class VisualEngine {
         this.camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
         this.camera.position.set(0, 0, 3);
 
-        // 2. PixiJS Setup
-        // Avoid creating real PIXI.Application in headless environments without canvas 2D support (jsdom)
-        let pixiCanvasCheck;
-        try { pixiCanvasCheck = (document.createElement('canvas').getContext && document.createElement('canvas').getContext('2d')) ? true : false; } catch (e) { pixiCanvasCheck = false; }
-        if (!pixiCanvasCheck) {
-            // minimal fake app to satisfy APIs used in tests
-            const fakeCanvas = document.querySelector(this.containers.pixi) || (function(){ const c = document.createElement('canvas'); c.id = 'pixi-canvas'; document.querySelector('#viewport') && document.querySelector('#viewport').appendChild(c); return c; })();
-            this.pixiApp = {
-                view: fakeCanvas,
-                renderer: { width: 800, height: 600, resize: () => {} },
-                stage: { children: [], addChild(c) { this.children.push(c); }, removeChild(c) { const idx=this.children.indexOf(c); if(idx>=0) this.children.splice(idx,1); } },
-                ticker: { update: () => {}, stop: () => {}, start: () => {} },
-                destroy: () => {}
-            };
-        } else {
-            this.pixiApp = createPixiApp({
-                view: document.querySelector(this.containers.pixi),
-                transparent: true,
-                backgroundAlpha: 0,
-                resizeTo: document.querySelector('#viewport')
-            });
-        }
-        // root container for user particles/effects
-        this.pixiRoot = new PIXI.Container();
-        try { this.pixiApp.stage.addChild(this.pixiRoot); } catch (e) { /* in fake app stage addChild may not exist */ }
-        this._pixiUpdaters = [];
+    // 2. PixiJS Setup
+    // Avoid creating real PIXI.Application in headless environments without canvas 2D support (jsdom)
+    let pixiCanvasCheck;
+    try { pixiCanvasCheck = !!((document.createElement('canvas').getContext && document.createElement('canvas').getContext('2d'))); } catch (e) { pixiCanvasCheck = false; }
+    if (!pixiCanvasCheck) {
+      // minimal fake app to satisfy APIs used in tests
+      const fakeCanvas = document.querySelector(this.containers.pixi) || (function () { const c = document.createElement('canvas'); c.id = 'pixi-canvas'; document.querySelector('#viewport') && document.querySelector('#viewport').appendChild(c); return c; }());
+      this.pixiApp = {
+        view: fakeCanvas,
+        renderer: { width: 800, height: 600, resize: () => {} },
+        stage: { children: [], addChild(c) { this.children.push(c); }, removeChild(c) { const idx = this.children.indexOf(c); if (idx >= 0) this.children.splice(idx, 1); } },
+        ticker: { update: () => {}, stop: () => {}, start: () => {} },
+        destroy: () => {},
+      };
+    } else {
+      this.pixiApp = createPixiApp({
+        view: document.querySelector(this.containers.pixi),
+        transparent: true,
+        backgroundAlpha: 0,
+        resizeTo: document.querySelector('#viewport'),
+      });
+    }
+    // root container for user particles/effects
+    this.pixiRoot = new PIXI.Container();
+    try { this.pixiApp.stage.addChild(this.pixiRoot); } catch (e) { /* in fake app stage addChild may not exist */ }
+    this._pixiUpdaters = [];
 
-        // expose viewport and mojs container references
-        this.viewport = document.querySelector('#viewport');
-        this.mojsContainer = document.querySelector(this.containers.mojs) || (function(){ const d=document.createElement('div'); d.id='mojs-overlay'; document.querySelector('#viewport').appendChild(d); return d; })();
+      // expose viewport and mojs container references
+      // Ensure a viewport element exists for headless/test environments — be defensive about document.body
+      this.viewport = document.querySelector('#viewport') || (function () {
+        const v = document.createElement('div'); v.id = 'viewport';
+        try {
+          const parent = document.body || document.documentElement || document;
+          parent && parent.appendChild && parent.appendChild(v);
+        } catch (e) { /* document body may not be available in this environment */ }
+        return v;
+      }());
+      this.mojsContainer = document.querySelector(this.containers.mojs) || (function () {
+        const d = document.createElement('div'); d.id = 'mojs-overlay';
+        try { (this.viewport || document.body || document.documentElement || document).appendChild(d); } catch (e) { /* best-effort */ }
+        return d;
+      }).call(this);
 
-        // 3. Mo.js Bridge
+      // 3. Mo.js Bridge
         // Stretch Goal: Forzamos a mojs a no usar su propio rAF si es posible
 
         // Setup frame hooks and detect mojs capabilities
@@ -343,6 +355,17 @@ export class VisualEngine {
             } catch (e) { this._logError?.(e); console.warn('addPixiEmitter failed', e); }
         };
 
+        // Custom effect spawner for UI presets
+        this.addCustomEffect = (preset, x = (this.pixiApp.renderer.width/2), y = (this.pixiApp.renderer.height/2)) => {
+            try {
+                const opts = { color: preset.color || '#ffffff', intensity: preset.intensity || 50, count: preset.count || 24 };
+                if (preset.layer === 'particle') return this.addPixiEmitter(x, y, opts);
+                if (preset.layer === 'fx') return this.addMojsBurst(x + this.viewport.getBoundingClientRect().left, y + this.viewport.getBoundingClientRect().top, { stroke: opts.color, count: opts.count, intensity: opts.intensity });
+                if (preset.layer === 'three') return this.addThreeMesh({ color: parseInt((preset.color || '#ff00a0').replace('#',''), 16) || 0xff00a0, scale: (preset.intensity || 50) / 100 });
+            } catch (e) { this._logError?.(e); console.warn('addCustomEffect failed', e); }
+        };
+
+
         // add a simple mojs burst
         this.addMojsBurst = (clientX, clientY, opts = {}) => {
             try {
@@ -397,29 +420,62 @@ export class VisualEngine {
         } catch (e) { console.warn('resize failed', e); }
     }
 
-    async exportVideo(durationFrames = 300) {
-        logger.info("🎬 Iniciando Exportación Determinista...");
-        const frames = [];
-        const compositeCanvas = document.createElement('canvas');
-        const ctx = compositeCanvas.getContext('2d');
-        
-        // Sincronizamos tamaños (fallback to stored)
-        const W = this._W || 800; const H = this._H || 600;
-        compositeCanvas.width = W; compositeCanvas.height = H;
+  async exportVideo(durationFrames = 300, { muxer = null } = {}) {
+    logger.info('🎬 Iniciando Exportación Determinista...');
+    const frames = [];
+    const compositeCanvas = document.createElement('canvas');
+        let ctx = compositeCanvas.getContext('2d');
+        // Safe fallback when getContext is not implemented in the environment
+        if (!ctx || typeof ctx.clearRect !== 'function' || typeof ctx.drawImage !== 'function') {
+          ctx = { clearRect: () => {}, drawImage: () => {}, getImageData: () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 }), toDataURL: () => 'data:,' };
+        }
 
-        await this.sync.renderFrames(durationFrames, (frameIndex) => {
-            // Dibujamos las 3 capas en el canvas de composición
-            ctx.clearRect(0, 0, compositeCanvas.width, compositeCanvas.height);
-            try { ctx.drawImage(this.renderer.domElement, 0, 0, W, H); } catch (e) {}
-            try { ctx.drawImage(this.pixiApp.view, 0, 0, W, H); } catch (e) {}
-            // Mo.js es SVG/DOM, requiere un paso extra (SVG -> Canvas)
-            
-            // Aquí capturaríamos el frame (WebCodecs o Array de Blobs)
-            logger.info(`Frame ${frameIndex} capturado.`);
-        });
+    // If a muxer instance is provided, we'll push frames into it and finalize at the end.
+    const usingMuxer = !!muxer;
+
+    // Sincronizamos tamaños (fallback to stored)
+    const W = this._W || 800; const H = this._H || 600;
+    compositeCanvas.width = W; compositeCanvas.height = H;
+
+    await this.sync.renderFrames(durationFrames, (frameIndex) => {
+      // Dibujamos las 3 capas en el canvas de composición
+      try { ctx.clearRect(0, 0, compositeCanvas.width, compositeCanvas.height); } catch (e) {}
+      try { ctx.drawImage(this.renderer.domElement, 0, 0, W, H); } catch (e) {}
+      try { ctx.drawImage(this.pixiApp.view, 0, 0, W, H); } catch (e) {}
+      // Mo.js es SVG/DOM, requiere un paso extra (SVG -> Canvas)
+
+      // Capture frame: either record to frames array or pass to muxer
+      if (usingMuxer) {
+        try {
+          const frameCanvas = document.createElement('canvas');
+          frameCanvas.width = compositeCanvas.width; frameCanvas.height = compositeCanvas.height;
+          let fctx = frameCanvas.getContext('2d');
+          if (!fctx || typeof fctx.drawImage !== 'function') {
+            fctx = { drawImage: () => {}, canvas: frameCanvas };
+          }
+          try { fctx.drawImage(compositeCanvas, 0, 0); } catch (e) { this._logError(e); }
+          muxer.addFrame(frameCanvas);
+        } catch (e) { this._logError(e); }
+      } else {
+        try { frames.push(compositeCanvas.toDataURL()); } catch (e) { frames.push(null); }
+      }
+      logger.info(`Frame ${frameIndex} capturado.`);
+    });
+
+    if (usingMuxer) {
+      try {
+        const blob = await muxer.finalize();
+        return blob;
+      } catch (e) {
+        this._logError(e);
+        return { error: e, framesCount: (muxer && typeof muxer.frameCount === 'function') ? muxer.frameCount() : frames.length };
+      }
     }
 
-    addPixiUpdater(fn) { if (!this._pixiUpdaters) this._pixiUpdaters = []; this._pixiUpdaters.push(fn); return fn; }
+    return frames;
+  }
+
+  addPixiUpdater(fn) { if (!this._pixiUpdaters) this._pixiUpdaters = []; this._pixiUpdaters.push(fn); return fn; }
 
     // ---- effect management APIs ----
     _logError(err) { try { this._errorLog.push({ time: Date.now(), message: err && err.message ? err.message : String(err), stack: err && err.stack ? err.stack : null }); } catch (e) { console.warn('error logging failed', e); } }

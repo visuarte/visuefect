@@ -1,0 +1,31 @@
+name: Label PRs touching src
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR files and add label
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const files = await github.rest.pulls.listFiles({ owner: context.repo.owner, repo: context.repo.repo, pull_number: prNumber });
+            const touchesSrc = files.data.some(f => f.filename.startsWith('src/'));
+            const label = 'needs-smoke';
+            if (touchesSrc) {
+              // ensure label exists
+              try {
+                await github.rest.issues.getLabel({ owner: context.repo.owner, repo: context.repo.repo, name: label });
+              } catch (e) {
+                await github.rest.issues.createLabel({ owner: context.repo.owner, repo: context.repo.repo, name: label, color: 'fbca04', description: 'Requires smoke E2E' });
+              }
+              await github.rest.issues.addLabels({ owner: context.repo.owner, repo: context.repo.repo, issue_number: prNumber, labels: [label] });
+              core.info(`Added label ${label} to PR #${prNumber}`);
+            } else {
+              core.info('No src changes detected; not adding label.');
+            }

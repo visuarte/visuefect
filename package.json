@@ -15,6 +15,9 @@
     "preview": "vite preview",
     "audit:fix": "npm audit fix",
     "test": "vitest",
+    "test:run": "vitest run",
+    "test:watch": "vitest",
+    "e2e:smoke": "node tools/e2e/smoke.js",
     "audit:deep": "node ./scripts/audit.js"
   },
   "dependencies": {
@@ -27,10 +30,12 @@
     "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^8.50.0",
     "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-config-prettier": "^9.3.0",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.29.6",
-    "prettier": "^2.10.0",
+    "jest-canvas-mock": "^2.5.2",
     "jsdom": "^28.0.0",
+    "playwright": "^1.58.2",
+    "prettier": "^2.8.7",
     "vite": "^7.3.1",
     "vitest": "^4.0.18"
   }
