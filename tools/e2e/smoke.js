@@ -17,6 +17,7 @@ async function ensureDir(p) { try { await fs.promises.mkdir(p, { recursive: true
   const page = await context.newPage();
   const CONSOLE_LOG = path.join(OUT_DIR, 'console.log');
   try { await fs.promises.writeFile(CONSOLE_LOG, '', { flag: 'w' }); } catch (e) {}
+  const strictMode = !!process.env.CI || process.env.SMOKE_STRICT === '1';
   let errorsDetected = false;
   page.on('console', msg => {
     const text = `[console.${msg.type()}] ${msg.text()}\n`;
@@ -24,12 +25,24 @@ async function ensureDir(p) { try { await fs.promises.mkdir(p, { recursive: true
     // Mark severity for error handling
     try { if (msg.type && (msg.type() === 'error' || msg.type() === 'assert')) errorsDetected = true; } catch (e) {}
 
-    // Treat explicit 404 resource failures and Pixi deprecation warnings as CI-level errors
+    // Detect 404s and Pixi deprecation; treat them as errors only in strict (CI) mode
     try {
       const t = msg.text && msg.text();
-      if (t && (/Failed to load resource: the server responded with a status of 404/.test(t) || /PixiJS Deprecation Warning/.test(t))) {
-        errorsDetected = true;
-        try { fs.appendFileSync(CONSOLE_LOG, `[console.detectedSeverity] ${t}\n`); } catch (e) {}
+      if (t && /Failed to load resource: the server responded with a status of 404/.test(t)) {
+        if (strictMode) {
+          errorsDetected = true;
+          try { fs.appendFileSync(CONSOLE_LOG, `[console.detectedSeverity] ${t}\n`); } catch (e) {}
+        } else {
+          try { fs.appendFileSync(CONSOLE_LOG, `[console.detectedNonFatal] ${t}\n`); } catch (e) {}
+        }
+      }
+      if (t && /PixiJS Deprecation Warning/.test(t)) {
+        if (strictMode) {
+          errorsDetected = true;
+          try { fs.appendFileSync(CONSOLE_LOG, `[console.detectedSeverity] ${t}\n`); } catch (e) {}
+        } else {
+          try { fs.appendFileSync(CONSOLE_LOG, `[console.detectedNonFatal] ${t}\n`); } catch (e) {}
+        }
       }
     } catch (e) {}
   });
