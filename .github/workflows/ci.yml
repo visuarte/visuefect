@@ -6,12 +6,13 @@ on:
 
 jobs:
   build:
+    name: Lint & Tests
     runs-on: ubuntu-latest
     env:
       MOJS_MOCK: '1'
     strategy:
       matrix:
-        node-version: [18, 24]
+        node-version: [18, 20]
     steps:
       - uses: actions/checkout@v4
       - name: Use Node.js ${{ matrix.node-version }}
@@ -21,6 +22,22 @@ jobs:
           cache: 'npm'
       - name: Install deps
         run: npm ci
+      - name: Lint
+        run: |
+          echo "==> Running lint"
+          npm run lint
+      - name: Run tests (with coverage)
+        run: |
+          echo "==> Running tests"
+          npm run test:run -- --coverage --silent | tee test-results.txt
+      - name: Upload test results & coverage (artifacts)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-${{ matrix.node-version }}
+          path: |
+            test-results.txt
+            coverage
       - name: Run audit
         run: npm audit --production=false --audit-level=moderate || true
       - name: Run deep audit
