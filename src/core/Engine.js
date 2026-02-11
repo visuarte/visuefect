@@ -355,6 +355,17 @@ export class VisualEngine {
             } catch (e) { this._logError?.(e); console.warn('addPixiEmitter failed', e); }
         };
 
+        // Custom effect spawner for UI presets
+        this.addCustomEffect = (preset, x = (this.pixiApp.renderer.width/2), y = (this.pixiApp.renderer.height/2)) => {
+            try {
+                const opts = { color: preset.color || '#ffffff', intensity: preset.intensity || 50, count: preset.count || 24 };
+                if (preset.layer === 'particle') return this.addPixiEmitter(x, y, opts);
+                if (preset.layer === 'fx') return this.addMojsBurst(x + this.viewport.getBoundingClientRect().left, y + this.viewport.getBoundingClientRect().top, { stroke: opts.color, count: opts.count, intensity: opts.intensity });
+                if (preset.layer === 'three') return this.addThreeMesh({ color: parseInt((preset.color || '#ff00a0').replace('#',''), 16) || 0xff00a0, scale: (preset.intensity || 50) / 100 });
+            } catch (e) { this._logError?.(e); console.warn('addCustomEffect failed', e); }
+        };
+
+
         // add a simple mojs burst
         this.addMojsBurst = (clientX, clientY, opts = {}) => {
             try {

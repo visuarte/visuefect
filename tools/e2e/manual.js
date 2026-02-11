@@ -41,7 +41,29 @@ async function ensureDir(p) { try { await fs.promises.mkdir(p, { recursive: true
       await page.click('.step-btn[data-step="2"]');
       await page.waitForTimeout(300);
     } catch (e) { console.warn('Failed to switch steps', e); }
-
+    // Create a custom preset via modal
+    try {
+      if (await page.$('#create-custom')) {
+        console.log('Opening create preset modal');
+        await page.click('#create-custom');
+        await page.waitForSelector('#create-modal', { timeout: 2000 });
+        await page.fill('#preset-name', 'Efecto Manual');
+        await page.selectOption('#preset-layer', 'particle');
+        await page.fill('#preset-color', '#ff00aa');
+        await page.fill('#preset-intensity', '40');
+        await page.fill('#preset-count', '36');
+        await page.click('#preset-save');
+        await page.waitForTimeout(400);
+        console.log('Preset created');
+        // click the new preset button (first data-preset button)
+        const presetBtn = await page.$('[data-preset]');
+        if (presetBtn) {
+          console.log('Clicking preset button to spawn');
+          await presetBtn.click();
+          await page.waitForTimeout(600);
+        }
+      }
+    } catch (e) { console.warn('Create preset flow failed', e); }
     // Click particle button (click fallback should spawn particle)
     try {
       if (await page.$('[data-drag-item="particle"]')) {
