@@ -1,6 +1,6 @@
 {
   "name": "visuefect",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -17,7 +17,7 @@
     "audit:fix": "npm audit fix",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:watch": "vitest" ,
+    "test:watch": "vitest",
     "audit:deep": "node ./scripts/audit.js"
   },
   "dependencies": {
