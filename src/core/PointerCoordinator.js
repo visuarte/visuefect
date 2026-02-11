@@ -8,7 +8,9 @@ export class PointerCoordinator {
   }
 
   getIntersections(event) {
-    const rect = (this.engine && this.engine.renderer && this.engine.renderer.domElement && this.engine.renderer.domElement.getBoundingClientRect && this.engine.renderer.domElement.getBoundingClientRect()) || { left: 0, top: 0, width: 1, height: 1 };
+    const rect = (this.engine && this.engine.renderer && this.engine.renderer.domElement && this.engine.renderer.domElement.getBoundingClientRect && this.engine.renderer.domElement.getBoundingClientRect()) || {
+      left: 0, top: 0, width: 1, height: 1,
+    };
 
     // defensive: avoid division by zero
     if (!rect.width || !rect.height) return null;

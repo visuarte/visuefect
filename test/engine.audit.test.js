@@ -57,7 +57,7 @@ describe('Engine audits and regressions', () => {
     expect(engine.mojsLoaded).toBe(true);
     const rect = engine.viewport.getBoundingClientRect();
     const x = rect.width / 2; const y = rect.height / 2;
-    const b = engine.addMojsBurst(x + rect.left, y + rect.top, {});
+    engine.addMojsBurst(x + rect.left, y + rect.top, {});
     expect(engine.mojsItems.length).toBeGreaterThan(0);
     engine.removeEffect('mojs', 1);
     // should have been removed

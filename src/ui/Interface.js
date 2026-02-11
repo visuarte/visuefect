@@ -4,6 +4,7 @@
  * - Se asume que `engine` y los componentes (threeScene, pixiParticles, mojsEffects)
  *   pueden pasarse para que la interfaz actúe sobre ellos.
  */
+import logger from '../utils/logger.js';
 
 export class Interface {
   constructor(engine) {
@@ -17,9 +18,9 @@ export class Interface {
   initEventListeners() {
     if (this._listenersInit) return;
     this._listenersInit = true;
-    if (typeof window !== 'undefined' && window.__VISUEFECT && window.__VISUEFECT.debug) console.log('Interface: initEventListeners');
+    if (typeof window !== 'undefined' && window.__VISUEFECT && window.__VISUEFECT.debug) logger.debug('Interface: initEventListeners');
     document.querySelectorAll('.step-btn').forEach((btn) => {
-      btn.addEventListener('click', (e) => { try { if (typeof window !== 'undefined' && window.__VISUEFECT && window.__VISUEFECT.debug) console.log('Interface: step-btn click', e.currentTarget.dataset.step); this.goToStep(parseInt(e.currentTarget.dataset.step, 10)); } catch (err) { console.warn('Interface step click failed', err); } });
+      btn.addEventListener('click', (e) => { try { if (typeof window !== 'undefined' && window.__VISUEFECT && window.__VISUEFECT.debug) logger.debug('Interface: step-btn click', e.currentTarget.dataset.step); this.goToStep(parseInt(e.currentTarget.dataset.step, 10)); } catch (err) { logger.warn('Interface step click failed', err); } });
     });
 
     // Drag & Drop Listener
@@ -43,14 +44,14 @@ export class Interface {
         dbgBtn.style.transition = 'background .18s ease, color .18s ease';
         dbgBtn.style.background = init ? 'linear-gradient(90deg,#00e676,#00c853)' : '';
         dbgBtn.style.color = init ? '#000' : '';
-        dbgBtn.addEventListener('click', (ev) => {
+        dbgBtn.addEventListener('click', (_ev) => {
           try {
             const enabled = !((typeof window !== 'undefined' && window.__VISUEFECT && window.__VISUEFECT.debug));
             this.setDebug(enabled);
             dbgBtn.textContent = `Debug: ${enabled ? 'On' : 'Off'}`;
             dbgBtn.style.background = enabled ? 'linear-gradient(90deg,#00e676,#00c853)' : '';
             dbgBtn.style.color = enabled ? '#000' : '';
-          } catch (e) { console.warn('debug toggle failed', e); }
+          } catch (e) { logger.warn('debug toggle failed', e); }
         });
       }
     } catch (e) {}
@@ -66,7 +67,7 @@ export class Interface {
       el.addEventListener('dragstart', (ev) => {
         const type = el.getAttribute('data-drag-type') || 'generic';
         const item = el.getAttribute('data-drag-item') || '';
-        if (typeof window !== 'undefined' && window.__VISUEFECT && window.__VISUEFECT.debug) console.log('Interface: dragstart', { type, item });
+        if (typeof window !== 'undefined' && window.__VISUEFECT && window.__VISUEFECT.debug) logger.debug('Interface: dragstart', { type, item });
         // normalize payload as JSON for cross-browser compatibility
         try { ev.dataTransfer.setData('application/json', JSON.stringify({ type, item })); } catch (e) {}
         // legacy keys for compatibility
@@ -89,7 +90,7 @@ export class Interface {
 
   goToStep(step) {
     this.currentStep = step;
-    if (typeof window !== 'undefined' && window.__VISUEFECT && window.__VISUEFECT.debug) console.log(`🚀 VISUEFECT - Paso ${step}: ${this.getStepName(step)}`);
+    if (typeof window !== 'undefined' && window.__VISUEFECT && window.__VISUEFECT.debug) logger.info(`🚀 VISUEFECT - Paso ${step}: ${this.getStepName(step)}`);
 
     // Estirar (Stretch): Animamos la transición de la UI con Mo.js
     try { if (window.mojs) new window.mojs.Html({ el: document.body, duration: 350, scale: { 1: 1.01 } }).play(); } catch (e) {}
@@ -139,7 +140,7 @@ export class Interface {
     const rect = document.querySelector('#viewport').getBoundingClientRect();
     const x = e.clientX - rect.left; const y = e.clientY - rect.top;
     if (typeof window !== 'undefined' && window.__VISUEFECT && window.__VISUEFECT.debug) {
-      console.log('Interface: drop', {
+      logger.debug('Interface: drop', {
         type, payload, x, y, types: Array.from(e.dataTransfer.types || []),
       });
     }
