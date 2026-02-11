@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import {
-  describe, it, expect, beforeEach, vi,
+  describe, it, expect, beforeEach,
 } from 'vitest';
 import { PointerCoordinator } from '../src/core/PointerCoordinator.js';
 

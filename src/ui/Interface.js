@@ -44,7 +44,7 @@ export class Interface {
         dbgBtn.style.transition = 'background .18s ease, color .18s ease';
         dbgBtn.style.background = init ? 'linear-gradient(90deg,#00e676,#00c853)' : '';
         dbgBtn.style.color = init ? '#000' : '';
-        dbgBtn.addEventListener('click', (ev) => {
+        dbgBtn.addEventListener('click', (_ev) => {
           try {
             const enabled = !((typeof window !== 'undefined' && window.__VISUEFECT && window.__VISUEFECT.debug));
             this.setDebug(enabled);

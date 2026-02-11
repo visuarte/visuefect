@@ -38,12 +38,12 @@ describe('Interface + DragSystem integration', () => {
   });
 
   it('Interface attaches step button listeners and goToStep works', () => {
-    const I = new Interface(engine);
+    const ui = new Interface(engine);
     const btn = doc.querySelector('.step-btn[data-step="2"]');
     expect(btn).toBeTruthy();
     // simulate click
     btn.click();
-    expect(I.currentStep).toBe(2);
+    expect(ui.currentStep).toBe(2);
   });
 
   it('dragging a sidebar item sets dataTransfer and drop triggers engine methods', () => {

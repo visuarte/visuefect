@@ -224,7 +224,7 @@ export class VisualEngine {
   setupHooks() {
     // Suscribimos los renders al ciclo del SyncBridge
     // onBeforeUpdate: process event logs (used for deterministic mojs fallback)
-    this.sync.subscribe('onBeforeUpdate', (dt) => {
+    this.sync.subscribe('onBeforeUpdate', (_dt) => {
       try {
         const t = this.sync.currentTime;
         if (this.mojsUseFallback && this._mojsEventLog.length) {
@@ -242,7 +242,7 @@ export class VisualEngine {
       } catch (e) { try { this._logError(e); logger.warn('mojs fallback processing failed', e); } catch (err) {} }
     });
 
-    this.sync.subscribe('onUpdate', (dt) => {
+    this.sync.subscribe('onUpdate', (_dt) => {
       // Update Three.js
       this.renderer.render(this.scene, this.camera);
 
@@ -360,7 +360,7 @@ export class VisualEngine {
         this.modules.push(container);
         // basic updater to move them for a few seconds
         let life = 180;
-        const updater = (dt) => {
+        const updater = (_dt) => {
           for (let i = container.children.length - 1; i >= 0; i--) {
             const p = container.children[i]; p.vy += 0.02; p.x += p.vx; p.y += p.vy; p.alpha = Math.max(0, (life / 200));
           }
@@ -503,10 +503,10 @@ export class VisualEngine {
       for (let i = 0; i < n; i++) {
         if (type === 'pixi') {
           const rect = this.viewport.getBoundingClientRect(); const x = (opts.x !== undefined) ? opts.x : (rect.width / 2 + (Math.random() - 0.5) * 120); const y = (opts.y !== undefined) ? opts.y : (rect.height / 2 + (Math.random() - 0.5) * 120);
-          const c = this.addPixiEmitter(x, y, opts);
+          this.addPixiEmitter(x, y, opts);
         } else if (type === 'mojs') {
           const rect = this.viewport.getBoundingClientRect(); const x = (opts.x !== undefined) ? opts.x : (rect.width / 2 + (Math.random() - 0.5) * 120); const y = (opts.y !== undefined) ? opts.y : (rect.height / 2 + (Math.random() - 0.5) * 120);
-          const b = this.addMojsBurst(x + this.viewport.getBoundingClientRect().left, y + this.viewport.getBoundingClientRect().top, opts);
+          this.addMojsBurst(x + this.viewport.getBoundingClientRect().left, y + this.viewport.getBoundingClientRect().top, opts);
         } else if (type === 'three') {
           this.addThreeMesh(opts);
         }

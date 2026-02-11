@@ -7,7 +7,7 @@ export function connectAudioToSync(sync, analyser, cb, opts = {}) {
   const buf = new Float32Array(analyser.fftSize || 1024);
   let lastHit = 0;
 
-  const handler = (dt) => {
+  const handler = (_dt) => {
     try {
       if (typeof analyser.getFloatTimeDomainData === 'function') {
         analyser.getFloatTimeDomainData(buf);

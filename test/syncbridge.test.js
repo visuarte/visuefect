@@ -25,7 +25,7 @@ describe('SyncBridge basics', () => {
 
   it('requestAnimationFrame polyfill calls callbacks and supports cancel', () => {
     const spy = vi.fn();
-    const id = window.requestAnimationFrame(spy);
+    window.requestAnimationFrame(spy);
     // before stepping callback not called
     expect(spy).not.toHaveBeenCalled();
     // step a single frame

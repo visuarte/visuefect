@@ -155,7 +155,7 @@ export default class Stepper {
           </div>
         `).join('');
         // attach remove handlers
-        list.querySelectorAll('.perf-remove').forEach((btn) => btn.addEventListener('click', (ev) => {
+        list.querySelectorAll('.perf-remove').forEach((btn) => btn.addEventListener('click', (_ev) => {
           const idx = Number(btn.getAttribute('data-idx'));
           const item = heavy[idx];
           if (item) this._removeHeavyElement(item);

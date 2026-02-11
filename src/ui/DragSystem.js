@@ -68,8 +68,7 @@ export default class DragSystem {
     e.preventDefault();
     _dbg('DragSystem: dragenter', { types: e.dataTransfer && Array.from(e.dataTransfer.types || []) });
     this.viewport.classList.add('ve-dragover');
-    // when drag enters, we can inspect items
-    const items = e.dataTransfer ? e.dataTransfer.items : null;
+    // when drag enters, we can inspect items (not directly used here)
     this._lastDT = e.dataTransfer || null;
   }
 
