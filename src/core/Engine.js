@@ -42,7 +42,7 @@ export class VisualEngine {
     try {
       const testCanvas = document.createElement('canvas');
       isWebGLAvailable = !!(testCanvas.getContext && (testCanvas.getContext('webgl') || testCanvas.getContext('webgl2')));
-    } catch (e) { isWebGLAvailable = false; }
+    } catch (e) { isWebGLAvailable = false; logger.warn('Three WebGL check failed', e); }
     if (!isWebGLAvailable) {
       this.isHeadless = true;
       // Create a minimal fake renderer to allow audit/tests to proceed without real GL
@@ -434,7 +434,7 @@ export class VisualEngine {
         this.renderer.setPixelRatio(dpr);
         this.renderer.setSize(W, H, false);
         if (this.camera) { this.camera.aspect = W / H; this.camera.updateProjectionMatrix(); }
-      } catch (e) { console.warn('Three resize failed', e); }
+      } catch (e) { logger.warn('Three resize failed', e); }
       // Pixi
       try { if (this.pixiApp && this.pixiApp.renderer) this.pixiApp.renderer.resize(W, H); } catch (e) { try { this._logError(e); logger.warn('Pixi resize failed', e); } catch (err) { /* best-effort */ } }
       // mojs overlay sizing not needed (DOM overlay is 100%)

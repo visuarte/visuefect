@@ -1,4 +1,5 @@
 import mojs from '@mojs/core';
+import logger from '../utils/logger.js';
 
 /**
  * Stepper / WorkflowManager
@@ -295,7 +296,7 @@ export default class Stepper {
       }
       // refresh banner view
       if (this._perfEl && this._perfShown) this._showPerfBanner(parseFloat(this._perfEl.querySelector('#perf-fps').textContent) || 0);
-    } catch (e) { console.warn('Could not remove heavy element', e); }
+    } catch (e) { logger.warn('Could not remove heavy element', e); }
   }
 
   _showElementDetails(item) {
@@ -341,6 +342,6 @@ export default class Stepper {
       }
       // refresh banner
       if (this._perfEl && this._perfShown) this._showPerfBanner(parseFloat(this._perfEl.querySelector('#perf-fps').textContent) || 0);
-    } catch (e) { console.warn('Optimization failed', e); }
+    } catch (e) { logger.warn('Optimization failed', e); }
   }
 }

@@ -1,3 +1,5 @@
+import logger from './logger.js';
+
 const DEFAULTS = {
   threeUrl: 'https://unpkg.com/three@0.154.0/build/three.module.js',
   pixiUrl: 'https://cdn.jsdelivr.net/npm/pixi.js@7.2.0/dist/browser/pixi.mjs',
@@ -124,7 +126,7 @@ async function ensureAll() {
 
     // attach export util to root for consumer
     container.__visuefect_export = { exportToVideo };
-  })().catch(e=>{ try { globalThis.logger?.error ? globalThis.logger.error('VISUEFECT export init failed', e) : console.error('VISUEFECT export init failed', e); } catch (er) { console.error('VISUEFECT export init failed', e); } });
+  })().catch(e => { try { logger.error('VISUEFECT export init failed', e); } catch (er) { /* ignore */ } });
 })();`;
   }
 
