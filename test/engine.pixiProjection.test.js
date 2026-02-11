@@ -1,12 +1,14 @@
 /** @vitest-environment jsdom */
-import { describe, it, beforeEach, expect } from 'vitest';
+import {
+  describe, it, beforeEach, expect,
+} from 'vitest';
 import VisualEngine from '../src/core/Engine.js';
 
 describe('Engine Pixi->Three projection', () => {
   let engine;
   beforeEach(() => {
     document.body.innerHTML = '<div id="viewport" style="width:640px;height:480px"><canvas id="three-canvas"></canvas><canvas id="pixi-canvas"></canvas><div id="mojs-overlay"></div></div>';
-    engine = new VisualEngine({ three:'#three-canvas', pixi:'#pixi-canvas', mojs:'#mojs-overlay' });
+    engine = new VisualEngine({ three: '#three-canvas', pixi: '#pixi-canvas', mojs: '#mojs-overlay' });
   });
 
   afterEach(() => { try { engine && engine.destroy && engine.destroy(); } catch (e) {} });

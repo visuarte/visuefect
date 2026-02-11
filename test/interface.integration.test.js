@@ -1,4 +1,6 @@
-import { describe, it, beforeEach, expect, vi } from 'vitest';
+import {
+  describe, it, beforeEach, expect, vi,
+} from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { JSDOM } from 'jsdom';
@@ -10,7 +12,7 @@ const makeEngineStub = () => ({
   addThreeMesh: vi.fn(),
   addPixiEmitter: vi.fn(),
   addMojsBurst: vi.fn(),
-  viewport: null
+  viewport: null,
 });
 
 function createDataTransferMock() {

@@ -7,7 +7,6 @@ import logger from '../utils/logger.js';
 // lightweight debug helper (global toggle via window.__VISUEFECT.debug)
 const _dbg = (...args) => { try { if (typeof window !== 'undefined' && window.__VISUEFECT && window.__VISUEFECT.debug) console.log(...args); } catch (e) {} };
 
-
 /**
  * DragSystem — Smart parser for drag&drop with Ghost previews
  * - Infers target layer (Three / Pixi / Mojs) depending on files or UI items
@@ -51,7 +50,7 @@ export default class DragSystem {
     this.viewport.addEventListener('drop', this._onDropBound);
 
     // If user drags UI buttons (.btn with data-drag-item), enable them as draggable
-    document.querySelectorAll('[data-drag-item]').forEach(el => el.setAttribute('draggable', 'true'));
+    document.querySelectorAll('[data-drag-item]').forEach((el) => el.setAttribute('draggable', 'true'));
   }
 
   destroy() {
@@ -120,15 +119,15 @@ export default class DragSystem {
 
     // If files
     if (inferred.files && inferred.files.length) {
-      const files = inferred.files;
+      const { files } = inferred;
       // prefer 3D if any gltf/obj
-      const has3D = files.some(f => /\.gltf$|\.glb$|\.obj$/i.test(f.name));
+      const has3D = files.some((f) => /\.gltf$|\.glb$|\.obj$/i.test(f.name));
       if (has3D) return this._handle3DFiles(files, x, y);
       // images seq
-      const isImageSeq = files.every(f => /image\//i.test(f.type)) && files.length > 1;
+      const isImageSeq = files.every((f) => /image\//i.test(f.type)) && files.length > 1;
       if (isImageSeq) return this._handleImageSequence(files, x, y);
       // json particle
-      const jsonFile = files.find(f => /\.json$/i.test(f.name));
+      const jsonFile = files.find((f) => /\.json$/i.test(f.name));
       if (jsonFile) return this._handleParticleJSON(jsonFile, x, y);
     }
 
@@ -158,10 +157,10 @@ export default class DragSystem {
     const files = Array.from(dt.files || []);
     if (files.length) {
       // check extensions
-      const exts = files.map(f => f.name.split('.').pop().toLowerCase());
-      if (exts.some(e => ['gltf', 'glb', 'obj'].includes(e))) return { layer: 'three', files };
-      if (files.every(f => /image\//i.test(f.type))) return { layer: 'pixi', files };
-      if (files.some(f => f.name.endsWith('.json'))) return { layer: 'pixi', files };
+      const exts = files.map((f) => f.name.split('.').pop().toLowerCase());
+      if (exts.some((e) => ['gltf', 'glb', 'obj'].includes(e))) return { layer: 'three', files };
+      if (files.every((f) => /image\//i.test(f.type))) return { layer: 'pixi', files };
+      if (files.some((f) => f.name.endsWith('.json'))) return { layer: 'pixi', files };
       return { layer: 'unknown', files };
     }
 
@@ -179,7 +178,7 @@ export default class DragSystem {
   // ---------- Handlers ----------
   async _handle3DFiles(files, x, y) {
     // pick first gltf/glb/obj
-    const f = files.find(f => /\.gltf$|\.glb$|\.obj$/i.test(f.name));
+    const f = files.find((f) => /\.gltf$|\.glb$|\.obj$/i.test(f.name));
     if (!f) return;
     const url = URL.createObjectURL(f);
     try {
@@ -222,7 +221,7 @@ export default class DragSystem {
       sprite.x = x; sprite.y = y; sprite.anchor.set(0.5);
       this.pixiParticles && this.pixiParticles.pixiRoot && this.pixiParticles.pixiRoot.addChild(sprite);
       // auto remove after some seconds
-      setTimeout(() => { try { sprite.parent && sprite.parent.removeChild(sprite); } catch (e) {} }, 8000);
+      setTimeout(() => { try { sprite.parent && sprite.parent.removeChild(sprite); } catch (err) {} }, 8000);
 
       window.dispatchEvent(new CustomEvent('drag:imported', { detail: { type: 'image-sequence', count: textures.length } }));
     } catch (err) { console.error('Image seq error', err); }
@@ -236,7 +235,7 @@ export default class DragSystem {
       const count = data.count || 30;
       const color = data.color || 0xffffff;
       for (let i = 0; i < count; i++) {
-        this.pixiParticles && this.pixiParticles.spawnAt && this.pixiParticles.spawnAt(x + (Math.random()-0.5)*120, y + (Math.random()-0.5)*120);
+        this.pixiParticles && this.pixiParticles.spawnAt && this.pixiParticles.spawnAt(x + (Math.random() - 0.5) * 120, y + (Math.random() - 0.5) * 120);
       }
       window.dispatchEvent(new CustomEvent('drag:imported', { detail: { type: 'particles-json', file: file.name } }));
     } catch (err) { console.error('Particle json error', err); }
@@ -246,7 +245,9 @@ export default class DragSystem {
   _ensureGhost3D() {
     if (this._ghost3D) return;
     const geo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
-    const mat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.18, depthTest: false });
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0x00f0ff, transparent: true, opacity: 0.18, depthTest: false,
+    });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.renderOrder = 9999;
     this.engine.scene.add(mesh);
@@ -258,7 +259,7 @@ export default class DragSystem {
     const rect = this.viewport.getBoundingClientRect();
     const ndc = new THREE.Vector2(
       ((clientX - rect.left) / rect.width) * 2 - 1,
-      -((clientY - rect.top) / rect.height) * 2 + 1
+      -((clientY - rect.top) / rect.height) * 2 + 1,
     );
     this._raycaster.setFromCamera(ndc, this.engine.camera);
     const pos = new THREE.Vector3();

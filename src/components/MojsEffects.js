@@ -23,7 +23,8 @@ export default function MojsEffects(engine, opts = {}) {
     if (m && m.Burst) {
       const b = new m.Burst({
         parent,
-        left: 0, top: 0,
+        left: 0,
+        top: 0,
         radius: { 0: 120 },
         count: 18,
         children: {
@@ -32,14 +33,16 @@ export default function MojsEffects(engine, opts = {}) {
           strokeWidth: { 6: 0 },
           duration: 700,
           angle: { 0: 360 },
-          easing: 'cubic.out'
-        }
+          easing: 'cubic.out',
+        },
       });
       if (engine && engine.mojsItems) engine.mojsItems.push(b);
       return b;
     }
     // fallback stub (simple object that registers into engine.mojsItems)
-    const fake = { parent, play() { try { if (engine && typeof engine.addPixiEmitter === 'function') engine.addPixiEmitter(100,100); } catch (err) {} }, tune() { return this; }, replay() { return this; } };
+    const fake = {
+      parent, play() { try { if (engine && typeof engine.addPixiEmitter === 'function') engine.addPixiEmitter(100, 100); } catch (err) {} }, tune() { return this; }, replay() { return this; },
+    };
     if (engine && engine.mojsItems) engine.mojsItems.push(fake);
     // Trigger a guaranteed fallback action so tests/audits can observe it synchronously
     try { if (engine && typeof engine.addPixiEmitter === 'function') engine.addPixiEmitter(100, 100); } catch (e) {}
@@ -51,7 +54,8 @@ export default function MojsEffects(engine, opts = {}) {
     if (m && m.Burst) {
       const b = new m.Burst({
         parent,
-        left: 0, top: 0,
+        left: 0,
+        top: 0,
         radius: { 0: 90 },
         count: 24,
         children: {
@@ -60,13 +64,15 @@ export default function MojsEffects(engine, opts = {}) {
           strokeWidth: { 4: 0 },
           duration: 850,
           angle: { 0: 260 },
-          easing: 'quint.out'
-        }
+          easing: 'quint.out',
+        },
       });
       if (engine && engine.mojsItems) engine.mojsItems.push(b);
       return b;
     }
-    const fake = { parent, play() { try { if (engine && typeof engine.addPixiEmitter === 'function') engine.addPixiEmitter(100,100); } catch (err) {} }, tune() { return this; }, replay() { return this; } };
+    const fake = {
+      parent, play() { try { if (engine && typeof engine.addPixiEmitter === 'function') engine.addPixiEmitter(100, 100); } catch (err) {} }, tune() { return this; }, replay() { return this; },
+    };
     if (engine && engine.mojsItems) engine.mojsItems.push(fake);
     return fake;
   }
@@ -76,7 +82,8 @@ export default function MojsEffects(engine, opts = {}) {
     if (m && m.Burst) {
       const b = new m.Burst({
         parent,
-        left: 0, top: 0,
+        left: 0,
+        top: 0,
         radius: { 0: 150 },
         count: 32,
         children: {
@@ -85,13 +92,15 @@ export default function MojsEffects(engine, opts = {}) {
           strokeWidth: { 2: 0 },
           radius: { 8: 0 },
           duration: 900,
-          easing: 'cubic.out'
-        }
+          easing: 'cubic.out',
+        },
       });
       if (engine && engine.mojsItems) engine.mojsItems.push(b);
       return b;
     }
-    const fake = { parent, play() { try { if (engine && typeof engine.addPixiEmitter === 'function') engine.addPixiEmitter(100,100); } catch (err) {} }, tune() { return this; }, replay() { return this; } };
+    const fake = {
+      parent, play() { try { if (engine && typeof engine.addPixiEmitter === 'function') engine.addPixiEmitter(100, 100); } catch (err) {} }, tune() { return this; }, replay() { return this; },
+    };
     if (engine && engine.mojsItems) engine.mojsItems.push(fake);
     return fake;
   }
@@ -127,12 +136,12 @@ export default function MojsEffects(engine, opts = {}) {
       engine.viewport.removeEventListener('pointerdown', onPointerDown);
       // unregister from engine list and try to stop animations
       try {
-        Object.values(effects).forEach(e => {
+        Object.values(effects).forEach((e) => {
           const idx = engine.mojsItems.indexOf(e);
           if (idx >= 0) engine.mojsItems.splice(idx, 1);
           try { e.stop && e.stop(); } catch (err) {}
         });
       } catch (err) {}
-    }
+    },
   };
 }

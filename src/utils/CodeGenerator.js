@@ -27,24 +27,34 @@ export function collectParameters(engine = {}, threeScene = null, pixiParticles 
       fov: engine.camera.fov,
       near: engine.camera.near,
       far: engine.camera.far,
-      position: engine.camera.position ? { x: engine.camera.position.x, y: engine.camera.position.y, z: engine.camera.position.z } : null
+      position: engine.camera.position ? { x: engine.camera.position.x, y: engine.camera.position.y, z: engine.camera.position.z } : null,
     };
   }
   // try to get mesh/material visual params
   const mesh = (threeScene && threeScene.mesh) || engine.defaultCube || null;
   if (mesh) {
     const mat = mesh.material || {};
+    let color = '#00f0ff';
+    if (mat.color) {
+      if (mat.color.getHexString) color = `#${mat.color.getHexString()}`;
+      else color = mat.color;
+    }
+    let emissive = '#001824';
+    if (mat.emissive) {
+      if (mat.emissive.getHexString) emissive = `#${mat.emissive.getHexString()}`;
+      else emissive = mat.emissive;
+    }
     params.three = {
       meshType: mesh.geometry ? mesh.geometry.type : 'BoxGeometry',
-      color: mat.color ? (mat.color.getHexString ? '#' + mat.color.getHexString() : '#00f0ff') : (mat.color ? mat.color : '#00f0ff'),
-      emissive: mat.emissive ? (mat.emissive.getHexString ? '#' + mat.emissive.getHexString() : '#001824') : '#001824',
+      color,
+      emissive,
       emissiveIntensity: mat.emissiveIntensity || 0.8,
-      rotationSpeed: mesh.userData && mesh.userData.rotationSpeed ? mesh.userData.rotationSpeed : 1.0
+      rotationSpeed: mesh.userData && mesh.userData.rotationSpeed ? mesh.userData.rotationSpeed : 1.0,
     };
   }
 
   // PIXI: try to sample first graphics child for color and capture spawnRadius if available
-  let pixiSample = { color: '#ffffff', spawnRadius: 6 };
+  const pixiSample = { color: '#ffffff', spawnRadius: 6 };
   try {
     if (pixiParticles && pixiParticles.config) {
       pixiSample.spawnRadius = pixiParticles.config.spawnRadius || pixiSample.spawnRadius;
@@ -57,7 +67,7 @@ export function collectParameters(engine = {}, threeScene = null, pixiParticles 
       if (g && g.graphicsData && g.graphicsData[0] && g.graphicsData[0].shape) {
         const gd = g.graphicsData[0];
         if (gd.fillStyle && gd.fillStyle.color) {
-          pixiSample.color = '#' + (gd.fillStyle.color.toString(16).padStart(6, '0'));
+          pixiSample.color = `#${gd.fillStyle.color.toString(16).padStart(6, '0')}`;
         }
       }
     }
@@ -65,7 +75,7 @@ export function collectParameters(engine = {}, threeScene = null, pixiParticles 
   params.pixi = pixiSample;
 
   // MOJS: try to sample stroke/fill from the 'lines' effect or first available
-  let mojsSample = { lines: '#00f0ff', star: '#ff00a0', ring: '#8b63ff' };
+  const mojsSample = { lines: '#00f0ff', star: '#ff00a0', ring: '#8b63ff' };
   try {
     const effects = (mojsEffects && mojsEffects.effects) || {};
     for (const k of ['lines', 'star', 'ring']) {

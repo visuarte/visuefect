@@ -1,9 +1,11 @@
-import { beforeEach, afterEach, describe, it, expect } from 'vitest';
+import {
+  beforeEach, afterEach, describe, it, expect,
+} from 'vitest';
+
+import VisualEngine from '../src/core/Engine.js';
 
 // ensure we can mutate env for mojs mock
 const OLD_MOCK = process.env.MOJS_MOCK;
-
-import VisualEngine from '../src/core/Engine.js';
 
 describe('Engine audits and regressions', () => {
   let engine;
@@ -30,7 +32,9 @@ describe('Engine audits and regressions', () => {
     engine.mojsUseFallback = true;
     // schedule an event at next frame time
     const nextT = engine.sync.currentTime + engine.sync.frameDuration;
-    engine._mojsEventLog = [{ t: nextT, x: 0, y: 0, opts: {} }];
+    engine._mojsEventLog = [{
+      t: nextT, x: 0, y: 0, opts: {},
+    }];
     // render one frame (will call onBeforeUpdate)
     await engine.sync.renderFrames(1);
     expect(engine._mojsEventLog.length).toBe(0);
@@ -65,7 +69,9 @@ describe('Engine audits and regressions', () => {
     let disconnected = false;
     class MockRO {
       constructor(fn) { this.fn = fn; }
+
       observe() {}
+
       disconnect() { disconnected = true; }
     }
     global.ResizeObserver = MockRO;

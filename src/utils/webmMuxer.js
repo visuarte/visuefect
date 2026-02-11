@@ -13,7 +13,9 @@
  */
 
 export default class WebMMuxer {
-  constructor({ width = 800, height = 600, fps = 30, mockOutput = false } = {}) {
+  constructor({
+    width = 800, height = 600, fps = 30, mockOutput = false,
+  } = {}) {
     this.width = width;
     this.height = height;
     this.fps = fps;
@@ -36,7 +38,9 @@ export default class WebMMuxer {
     this._closed = true;
     // If running in mock mode, return a small blob containing metadata for tests
     if (this.mockOutput) {
-      const payload = JSON.stringify({ frames: this._frames.length, width: this.width, height: this.height, fps: this.fps });
+      const payload = JSON.stringify({
+        frames: this._frames.length, width: this.width, height: this.height, fps: this.fps,
+      });
       // In jsdom/Node tests, Blob is available via jsdom; fallback to simple object if not
       try {
         const b = new Blob([payload], { type: 'application/webm' });

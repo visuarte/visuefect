@@ -1,15 +1,13 @@
-
-
 const DEFAULTS = {
   threeUrl: 'https://unpkg.com/three@0.154.0/build/three.module.js',
   pixiUrl: 'https://cdn.jsdelivr.net/npm/pixi.js@7.2.0/dist/browser/pixi.mjs',
   mojsUrl: 'https://cdn.jsdelivr.net/npm/@mojs/core/dist/mojs.esm.js',
-  esModuleShims: 'https://cdn.jsdelivr.net/npm/es-module-shims@1.8.1/dist/es-module-shims.min.js'
+  esModuleShims: 'https://cdn.jsdelivr.net/npm/es-module-shims@1.8.1/dist/es-module-shims.min.js',
 };
 
 export default class CodeExporter {
   constructor(opts = {}) {
-    this.opts = Object.assign({}, DEFAULTS, opts);
+    this.opts = { ...DEFAULTS, ...opts };
   }
 
   generate({ type = 'iife', params = {} } = {}) {
@@ -21,7 +19,9 @@ export default class CodeExporter {
 
   _loaderSnippet() {
     // returns a loader function string that ensures libs are available on window
-    const { threeUrl, pixiUrl, mojsUrl, esModuleShims } = this.opts;
+    const {
+      threeUrl, pixiUrl, mojsUrl, esModuleShims,
+    } = this.opts;
     return `
 async function ensureLib(url, globalName) {
   if (window[globalName]) return window[globalName];

@@ -1,4 +1,6 @@
-import { describe, it, beforeEach, expect } from 'vitest';
+import {
+  describe, it, beforeEach, expect,
+} from 'vitest';
 import VisualEngine from '../src/core/Engine.js';
 
 describe('Engine Pixi Updater cleanup', () => {

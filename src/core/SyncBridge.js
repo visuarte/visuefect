@@ -62,12 +62,16 @@ export class SyncBridge {
   }
 
   get time() { return this._time; } // ms
+
   get frame() { return this._frame; }
+
   get frameDuration() { return this._frameMs; } // ms
 
   // ------------ Hook registration ------------
   onBeforeUpdate(fn) { this._before.add(fn); return () => this._before.delete(fn); }
+
   onUpdate(fn) { this._update.add(fn); return () => this._update.delete(fn); }
+
   onAfterUpdate(fn) { this._after.add(fn); return () => this._after.delete(fn); }
 
   // ------------ Loop control ------------
@@ -86,6 +90,7 @@ export class SyncBridge {
   }
 
   pause() { this._paused = true; }
+
   resume() { if (!this._running) this.start(); this._paused = false; }
 
   // Advance a single frame (or n frames) deterministically
@@ -190,7 +195,7 @@ export class SyncBridge {
     if (eventName === 'onBeforeUpdate') return this.onBeforeUpdate(fn);
     if (eventName === 'onUpdate') return this.onUpdate(fn);
     if (eventName === 'onAfterUpdate') return this.onAfterUpdate(fn);
-    throw new Error('Unknown event ' + eventName);
+    throw new Error(`Unknown event ${eventName}`);
   }
 
   /** Return normalized delta relative to 60fps baseline (useful for Pixi) */
@@ -199,7 +204,6 @@ export class SyncBridge {
   }
 
   get currentTime() { return this._time; }
-
 
   // ------------ Utilities ------------
   // get current virtual time in ms

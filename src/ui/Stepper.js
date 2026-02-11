@@ -8,14 +8,16 @@ import mojs from '@mojs/core';
  * - Validador de rendimiento que muestra aviso si FPS < threshold
  */
 export default class Stepper {
-  constructor({ engine, ui = null, pixiParticles = null, mojsEffects = null, options = {} } = {}) {
+  constructor({
+    engine, ui = null, pixiParticles = null, mojsEffects = null, options = {},
+  } = {}) {
     if (!engine) throw new Error('Stepper requires engine instance');
     this.engine = engine;
     this.ui = ui;
     this.pixiParticles = pixiParticles;
     this.mojsEffects = mojsEffects;
 
-    this.steps = [ 'ATMOSPHERE', 'DYNAMICS', 'ACCENTS', 'EXPORT' ];
+    this.steps = ['ATMOSPHERE', 'DYNAMICS', 'ACCENTS', 'EXPORT'];
     this.currentIndex = 0;
 
     this.fpsThreshold = options.fpsThreshold || 30;
@@ -48,7 +50,7 @@ export default class Stepper {
   destroy() {
     // remove updater
     if (this.engine && this._onFrameBound) {
-      if (this.engine._threeUpdaters) this.engine._threeUpdaters = this.engine._threeUpdaters.filter(f => f !== this._onFrameBound);
+      if (this.engine._threeUpdaters) this.engine._threeUpdaters = this.engine._threeUpdaters.filter((f) => f !== this._onFrameBound);
     }
     if (this._perfEl && this._perfEl.parentNode) this._perfEl.parentNode.removeChild(this._perfEl);
     this._monitoring = false;
@@ -80,22 +82,29 @@ export default class Stepper {
   }
 
   next() { return this.setStep(this.currentIndex + 1); }
+
   prev() { return this.setStep(this.currentIndex - 1); }
 
   /* ---------- UI mutation ---------- */
   _mutateUIForStep(stepNumber) {
     // find all controls with data-step
     const all = document.querySelectorAll('[data-step]');
-    all.forEach(el => {
+    all.forEach((el) => {
       const step = Number(el.getAttribute('data-step')) || 1;
       const container = el.closest('.card') || el;
       if (step === stepNumber) {
         // active: remove hidden, add highlight
         el.disabled = false; container.classList.remove('ve-step-hidden'); container.classList.add('ve-step-highlight');
         // animate highlight
-        try { new mojs.Html({ el: container, duration: 450, scale: { 1: 1.03 }, easing: 'elastic.out' }).play(); } catch (e) {}
-      } else {
-        // inactive: disable and visually mute
+        try {
+          new mojs.Html({
+            el: container, duration: 450, scale: { 1: 1.03 }, easing: 'elastic.out',
+          }).play();
+        } catch (e) {}
+      }
+
+      // inactive: disable and visually mute
+      if (step !== stepNumber) {
         el.disabled = true; container.classList.remove('ve-step-highlight'); container.classList.add('ve-step-hidden');
       }
     });
@@ -103,7 +112,7 @@ export default class Stepper {
     // special handling for EXPORT step
     if (stepNumber === 4) {
       const exports = document.querySelectorAll('#generate-code, #export-video, #copy-code');
-      exports.forEach(el => { el.classList.add('ve-step-highlight'); try { new mojs.Html({ el, duration: 350, scale: {1:1.04} }).play(); } catch (e) {} });
+      exports.forEach((el) => { el.classList.add('ve-step-highlight'); try { new mojs.Html({ el, duration: 350, scale: { 1: 1.04 } }).play(); } catch (e) {} });
     }
   }
 
@@ -145,7 +154,7 @@ export default class Stepper {
           </div>
         `).join('');
         // attach remove handlers
-        list.querySelectorAll('.perf-remove').forEach(btn => btn.addEventListener('click', (ev) => {
+        list.querySelectorAll('.perf-remove').forEach((btn) => btn.addEventListener('click', (ev) => {
           const idx = Number(btn.getAttribute('data-idx'));
           const item = heavy[idx];
           if (item) this._removeHeavyElement(item);
@@ -166,6 +175,7 @@ export default class Stepper {
       }
     }
   }
+
   _hidePerfBanner() { if (this._perfEl) { this._perfEl.classList.remove('show'); this._perfShown = false; } }
 
   _onFrame(dt) {
@@ -191,10 +201,9 @@ export default class Stepper {
         // also show if fps is seriously low
         this._showPerfBanner(fps);
       }
-    } else {
-      // hide banner once recovered
-      if (this._perfShown) this._hidePerfBanner();
     }
+    // hide banner once recovered
+    if (this._perfShown) this._hidePerfBanner();
   }
 
   // Simple auto optimize function (best-effort)
@@ -234,9 +243,13 @@ export default class Stepper {
     } catch (e) {}
 
     // show small confirmation
-    const prev = this._perfEl; if (prev) prev.innerHTML = '<div style="font-weight:bold">Optimización aplicada — Revise el rendimiento</div>'; setTimeout(()=>{ if (this._perfEl) this._perfEl.innerHTML = `<div><strong>Límite de Hardware Alcanzado</strong> — <span id="perf-fps">0</span> FPS</div>
+    const prev = this._perfEl; if (prev) prev.innerHTML = '<div style="font-weight:bold">Optimización aplicada — Revise el rendimiento</div>'; setTimeout(() => {
+      if (this._perfEl) {
+        this._perfEl.innerHTML = `<div><strong>Límite de Hardware Alcanzado</strong> — <span id="perf-fps">0</span> FPS</div>
       <div id="perf-suggestions" style="font-size:12px;margin-top:8px">Sugerencias: reducir partículas, bajar calidad o desactivar FX</div>
-      <div id="perf-list" style="margin-top:10px;max-height:160px;overflow:auto;font-size:12px"></div>`; const btn=this._perfEl.querySelector('#perf-optimize'); if(btn)btn.addEventListener('click',()=>this.autoOptimize()); }, 2200);
+      <div id="perf-list" style="margin-top:10px;max-height:160px;overflow:auto;font-size:12px"></div>`;
+      } const btn = this._perfEl.querySelector('#perf-optimize'); if (btn)btn.addEventListener('click', () => this.autoOptimize());
+    }, 2200);
   }
 
   _getHeavyElements() {
@@ -247,7 +260,9 @@ export default class Stepper {
         if (o.isMesh && o.geometry) {
           const pos = o.geometry.attributes && o.geometry.attributes.position;
           const verts = pos ? pos.count : 0;
-          out.push({ type: 'three', label: o.name || `Mesh ${o.id}`, metric: verts, metricText: `${verts} verts`, ref: o, hint: `Three.js mesh` });
+          out.push({
+            type: 'three', label: o.name || `Mesh ${o.id}`, metric: verts, metricText: `${verts} verts`, ref: o, hint: 'Three.js mesh',
+          });
         }
       });
     }
@@ -255,13 +270,15 @@ export default class Stepper {
     if (this.pixiParticles && this.pixiParticles.pixiRoot) {
       this.pixiParticles.pixiRoot.children.forEach((c, i) => {
         const cost = c.children ? c.children.length : 1;
-        out.push({ type: 'pixi', label: c.name || `Sprite ${i}`, metric: cost, metricText: `${cost} sprites`, ref: c, hint: `Pixi display object` });
+        out.push({
+          type: 'pixi', label: c.name || `Sprite ${i}`, metric: cost, metricText: `${cost} sprites`, ref: c, hint: 'Pixi display object',
+        });
       });
     }
 
     // sort by metric desc and return top 8
-    out.sort((a,b)=>b.metric - a.metric);
-    return out.slice(0,8);
+    out.sort((a, b) => b.metric - a.metric);
+    return out.slice(0, 8);
   }
 
   _removeHeavyElement(item) {
@@ -296,9 +313,9 @@ export default class Stepper {
       <div style="margin-top:12px;display:flex;gap:8px"><button id="perf-detail-opt" class="btn">Aplicar optimización</button><button id="perf-detail-remove" class="btn" style="background:#ff4d6d;color:#fff">Eliminar</button></div>
       <div style="margin-top:8px;font-size:12px;color:#ccc">Sugerencia automática: ${this._suggestOptimizations(item)}</div>
     `;
-    overlay.querySelector('#perf-detail-close').addEventListener('click', () => { try{ overlay.remove(); } catch(e){} });
-    overlay.querySelector('#perf-detail-remove').addEventListener('click', () => { this._removeHeavyElement(item); try{ overlay.remove(); } catch(e){} });
-    overlay.querySelector('#perf-detail-opt').addEventListener('click', () => { this._applyQuickOptimization(item); try{ overlay.remove(); } catch(e){} });
+    overlay.querySelector('#perf-detail-close').addEventListener('click', () => { try { overlay.remove(); } catch (e) {} });
+    overlay.querySelector('#perf-detail-remove').addEventListener('click', () => { this._removeHeavyElement(item); try { overlay.remove(); } catch (e) {} });
+    overlay.querySelector('#perf-detail-opt').addEventListener('click', () => { this._applyQuickOptimization(item); try { overlay.remove(); } catch (e) {} });
   }
 
   _suggestOptimizations(item) {
@@ -319,7 +336,7 @@ export default class Stepper {
       if (item.type === 'pixi' && item.ref) {
         if (item.ref.children) {
           const toRem = Math.floor(item.ref.children.length / 2);
-          for (let i = 0; i < toRem; i++) { try { const c = item.ref.children[0]; item.ref.removeChild(c); if (c.destroy) c.destroy(); } catch(e){} }
+          for (let i = 0; i < toRem; i++) { try { const c = item.ref.children[0]; item.ref.removeChild(c); if (c.destroy) c.destroy(); } catch (e) {} }
         }
       }
       // refresh banner

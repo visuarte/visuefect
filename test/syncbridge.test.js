@@ -1,5 +1,7 @@
 /** @vitest-environment jsdom */
-import { describe, it, beforeEach, expect, vi } from 'vitest';
+import {
+  describe, it, beforeEach, expect, vi,
+} from 'vitest';
 import SyncBridge from '../src/core/SyncBridge.js';
 
 describe('SyncBridge basics', () => {

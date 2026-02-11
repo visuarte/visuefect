@@ -1,4 +1,6 @@
-import { describe, it, beforeEach, expect } from 'vitest';
+import {
+  describe, it, beforeEach, expect,
+} from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { JSDOM } from 'jsdom';
