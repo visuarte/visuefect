@@ -1,9 +1,0 @@
-{
-  "test": true,
-  "chunks": [
-    {
-      "i": 1,
-      "data": "abc"
-    }
-  ]
-}
