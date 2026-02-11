@@ -62,32 +62,32 @@ export class VisualEngine {
         this.camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
         this.camera.position.set(0, 0, 3);
 
-        // 2. PixiJS Setup
-        // Avoid creating real PIXI.Application in headless environments without canvas 2D support (jsdom)
-        let pixiCanvasCheck;
-        try { pixiCanvasCheck = (document.createElement('canvas').getContext && document.createElement('canvas').getContext('2d')) ? true : false; } catch (e) { pixiCanvasCheck = false; }
-        if (!pixiCanvasCheck) {
-            // minimal fake app to satisfy APIs used in tests
-            const fakeCanvas = document.querySelector(this.containers.pixi) || (function(){ const c = document.createElement('canvas'); c.id = 'pixi-canvas'; document.querySelector('#viewport') && document.querySelector('#viewport').appendChild(c); return c; })();
-            this.pixiApp = {
-                view: fakeCanvas,
-                renderer: { width: 800, height: 600, resize: () => {} },
-                stage: { children: [], addChild(c) { this.children.push(c); }, removeChild(c) { const idx=this.children.indexOf(c); if(idx>=0) this.children.splice(idx,1); } },
-                ticker: { update: () => {}, stop: () => {}, start: () => {} },
-                destroy: () => {}
-            };
-        } else {
-            this.pixiApp = createPixiApp({
-                view: document.querySelector(this.containers.pixi),
-                transparent: true,
-                backgroundAlpha: 0,
-                resizeTo: document.querySelector('#viewport')
-            });
-        }
-        // root container for user particles/effects
-        this.pixiRoot = new PIXI.Container();
-        try { this.pixiApp.stage.addChild(this.pixiRoot); } catch (e) { /* in fake app stage addChild may not exist */ }
-        this._pixiUpdaters = [];
+    // 2. PixiJS Setup
+    // Avoid creating real PIXI.Application in headless environments without canvas 2D support (jsdom)
+    let pixiCanvasCheck;
+    try { pixiCanvasCheck = !!((document.createElement('canvas').getContext && document.createElement('canvas').getContext('2d'))); } catch (e) { pixiCanvasCheck = false; }
+    if (!pixiCanvasCheck) {
+      // minimal fake app to satisfy APIs used in tests
+      const fakeCanvas = document.querySelector(this.containers.pixi) || (function () { const c = document.createElement('canvas'); c.id = 'pixi-canvas'; document.querySelector('#viewport') && document.querySelector('#viewport').appendChild(c); return c; }());
+      this.pixiApp = {
+        view: fakeCanvas,
+        renderer: { width: 800, height: 600, resize: () => {} },
+        stage: { children: [], addChild(c) { this.children.push(c); }, removeChild(c) { const idx = this.children.indexOf(c); if (idx >= 0) this.children.splice(idx, 1); } },
+        ticker: { update: () => {}, stop: () => {}, start: () => {} },
+        destroy: () => {},
+      };
+    } else {
+      this.pixiApp = createPixiApp({
+        view: document.querySelector(this.containers.pixi),
+        transparent: true,
+        backgroundAlpha: 0,
+        resizeTo: document.querySelector('#viewport'),
+      });
+    }
+    // root container for user particles/effects
+    this.pixiRoot = new PIXI.Container();
+    try { this.pixiApp.stage.addChild(this.pixiRoot); } catch (e) { /* in fake app stage addChild may not exist */ }
+    this._pixiUpdaters = [];
 
         // expose viewport and mojs container references
         this.viewport = document.querySelector('#viewport');
@@ -397,15 +397,18 @@ export class VisualEngine {
         } catch (e) { console.warn('resize failed', e); }
     }
 
-    async exportVideo(durationFrames = 300) {
-        logger.info("🎬 Iniciando Exportación Determinista...");
-        const frames = [];
-        const compositeCanvas = document.createElement('canvas');
-        const ctx = compositeCanvas.getContext('2d');
-        
-        // Sincronizamos tamaños (fallback to stored)
-        const W = this._W || 800; const H = this._H || 600;
-        compositeCanvas.width = W; compositeCanvas.height = H;
+  async exportVideo(durationFrames = 300, { muxer = null } = {}) {
+    logger.info('🎬 Iniciando Exportación Determinista...');
+    const frames = [];
+    const compositeCanvas = document.createElement('canvas');
+    const ctx = compositeCanvas.getContext('2d');
+
+    // Sincronizamos tamaños (fallback to stored)
+    const W = this._W || 800; const H = this._H || 600;
+    compositeCanvas.width = W; compositeCanvas.height = H;
+
+    // If a muxer instance is provided, we'll push frames into it and finalize at the end.
+    const usingMuxer = !!muxer;
 
         await this.sync.renderFrames(durationFrames, (frameIndex) => {
             // Dibujamos las 3 capas en el canvas de composición
