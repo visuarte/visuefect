@@ -17,13 +17,22 @@ async function ensureDir(p) { try { await fs.promises.mkdir(p, { recursive: true
   const page = await context.newPage();
   const CONSOLE_LOG = path.join(OUT_DIR, 'console.log');
   try { await fs.promises.writeFile(CONSOLE_LOG, '', { flag: 'w' }); } catch (e) {}
+  let errorsDetected = false;
   page.on('console', msg => {
     const text = `[console.${msg.type()}] ${msg.text()}\n`;
     try { fs.appendFileSync(CONSOLE_LOG, text); } catch (e) {}
+    // Mark severity for error handling
+    try { if (msg.type && (msg.type() === 'error' || msg.type() === 'assert')) errorsDetected = true; } catch (e) {}
   });
   page.on('pageerror', err => {
     const text = `[pageerror] ${err.stack || err.message}\n`;
     try { fs.appendFileSync(CONSOLE_LOG, text); } catch (e) {}
+    errorsDetected = true;
+  });
+  page.on('requestfailed', req => {
+    const text = `[requestfailed] ${req.method()} ${req.url()} ${req.failure()?.errorText || ''}\n`;
+    try { fs.appendFileSync(CONSOLE_LOG, text); } catch (e) {}
+    errorsDetected = true;
   });
 
   try {
@@ -77,6 +86,18 @@ async function ensureDir(p) { try { await fs.promises.mkdir(p, { recursive: true
     await page.waitForTimeout(1000);
 
     console.log('Closing context (flushing video)...');
+
+    // before closing, if there were any console errors or request failures, save page HTML for inspection
+    if (errorsDetected) {
+      try {
+        const html = await page.content();
+        await fs.promises.writeFile(path.join(OUT_DIR, 'error.html'), html);
+        console.log('Errors detected during run; saved page HTML to error.html');
+      } catch (e) {
+        console.warn('Failed to save page HTML', e);
+      }
+    }
+
     await context.close();
 
     // find generated video file
@@ -91,6 +112,10 @@ async function ensureDir(p) { try { await fs.promises.mkdir(p, { recursive: true
     }
 
     await browser.close();
+    if (errorsDetected) {
+      console.error('E2E smoke completed with errors. See artifacts/console.log and artifacts/error.html');
+      process.exit(2);
+    }
     console.log('E2E smoke completed successfully. Screenshot:', SCREENSHOT);
     process.exit(0);
   } catch (err) {
