@@ -89,11 +89,23 @@ export class VisualEngine {
     try { this.pixiApp.stage.addChild(this.pixiRoot); } catch (e) { /* in fake app stage addChild may not exist */ }
     this._pixiUpdaters = [];
 
-        // expose viewport and mojs container references
-        this.viewport = document.querySelector('#viewport');
-        this.mojsContainer = document.querySelector(this.containers.mojs) || (function(){ const d=document.createElement('div'); d.id='mojs-overlay'; document.querySelector('#viewport').appendChild(d); return d; })();
+      // expose viewport and mojs container references
+      // Ensure a viewport element exists for headless/test environments — be defensive about document.body
+      this.viewport = document.querySelector('#viewport') || (function () {
+        const v = document.createElement('div'); v.id = 'viewport';
+        try {
+          const parent = document.body || document.documentElement || document;
+          parent && parent.appendChild && parent.appendChild(v);
+        } catch (e) { /* document body may not be available in this environment */ }
+        return v;
+      }());
+      this.mojsContainer = document.querySelector(this.containers.mojs) || (function () {
+        const d = document.createElement('div'); d.id = 'mojs-overlay';
+        try { (this.viewport || document.body || document.documentElement || document).appendChild(d); } catch (e) { /* best-effort */ }
+        return d;
+      }).call(this);
 
-        // 3. Mo.js Bridge
+      // 3. Mo.js Bridge
         // Stretch Goal: Forzamos a mojs a no usar su propio rAF si es posible
 
         // Setup frame hooks and detect mojs capabilities
@@ -401,28 +413,58 @@ export class VisualEngine {
     logger.info('🎬 Iniciando Exportación Determinista...');
     const frames = [];
     const compositeCanvas = document.createElement('canvas');
-    const ctx = compositeCanvas.getContext('2d');
+        let ctx = compositeCanvas.getContext('2d');
+        // Safe fallback when getContext is not implemented in the environment
+        if (!ctx || typeof ctx.clearRect !== 'function' || typeof ctx.drawImage !== 'function') {
+          ctx = { clearRect: () => {}, drawImage: () => {}, getImageData: () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 }), toDataURL: () => 'data:,' };
+        }
+
+    // If a muxer instance is provided, we'll push frames into it and finalize at the end.
+    const usingMuxer = !!muxer;
 
     // Sincronizamos tamaños (fallback to stored)
     const W = this._W || 800; const H = this._H || 600;
     compositeCanvas.width = W; compositeCanvas.height = H;
 
-    // If a muxer instance is provided, we'll push frames into it and finalize at the end.
-    const usingMuxer = !!muxer;
+    await this.sync.renderFrames(durationFrames, (frameIndex) => {
+      // Dibujamos las 3 capas en el canvas de composición
+      try { ctx.clearRect(0, 0, compositeCanvas.width, compositeCanvas.height); } catch (e) {}
+      try { ctx.drawImage(this.renderer.domElement, 0, 0, W, H); } catch (e) {}
+      try { ctx.drawImage(this.pixiApp.view, 0, 0, W, H); } catch (e) {}
+      // Mo.js es SVG/DOM, requiere un paso extra (SVG -> Canvas)
 
-        await this.sync.renderFrames(durationFrames, (frameIndex) => {
-            // Dibujamos las 3 capas en el canvas de composición
-            ctx.clearRect(0, 0, compositeCanvas.width, compositeCanvas.height);
-            try { ctx.drawImage(this.renderer.domElement, 0, 0, W, H); } catch (e) {}
-            try { ctx.drawImage(this.pixiApp.view, 0, 0, W, H); } catch (e) {}
-            // Mo.js es SVG/DOM, requiere un paso extra (SVG -> Canvas)
-            
-            // Aquí capturaríamos el frame (WebCodecs o Array de Blobs)
-            logger.info(`Frame ${frameIndex} capturado.`);
-        });
+      // Capture frame: either record to frames array or pass to muxer
+      if (usingMuxer) {
+        try {
+          const frameCanvas = document.createElement('canvas');
+          frameCanvas.width = compositeCanvas.width; frameCanvas.height = compositeCanvas.height;
+          let fctx = frameCanvas.getContext('2d');
+          if (!fctx || typeof fctx.drawImage !== 'function') {
+            fctx = { drawImage: () => {}, canvas: frameCanvas };
+          }
+          try { fctx.drawImage(compositeCanvas, 0, 0); } catch (e) { this._logError(e); }
+          muxer.addFrame(frameCanvas);
+        } catch (e) { this._logError(e); }
+      } else {
+        try { frames.push(compositeCanvas.toDataURL()); } catch (e) { frames.push(null); }
+      }
+      logger.info(`Frame ${frameIndex} capturado.`);
+    });
+
+    if (usingMuxer) {
+      try {
+        const blob = await muxer.finalize();
+        return blob;
+      } catch (e) {
+        this._logError(e);
+        return { error: e, framesCount: (muxer && typeof muxer.frameCount === 'function') ? muxer.frameCount() : frames.length };
+      }
     }
 
-    addPixiUpdater(fn) { if (!this._pixiUpdaters) this._pixiUpdaters = []; this._pixiUpdaters.push(fn); return fn; }
+    return frames;
+  }
+
+  addPixiUpdater(fn) { if (!this._pixiUpdaters) this._pixiUpdaters = []; this._pixiUpdaters.push(fn); return fn; }
 
     // ---- effect management APIs ----
     _logError(err) { try { this._errorLog.push({ time: Date.now(), message: err && err.message ? err.message : String(err), stack: err && err.stack ? err.stack : null }); } catch (e) { console.warn('error logging failed', e); } }
