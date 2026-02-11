@@ -2,11 +2,16 @@
 (async () => {
   try {
     const _m = 'jest-canvas-mock';
+    // Some modules assume a `jest` global at import-time (designed for Jest). Stub it briefly so
+    // `jest-canvas-mock` can initialize without throwing in Vitest environment.
+    const hadJest = typeof globalThis.jest !== 'undefined';
+    if (!hadJest) globalThis.jest = {};
     await import(_m);
+    if (!hadJest) delete globalThis.jest;
   } catch (e) {
-    // missing dependency: provide minimal 2D context fallback and warn
+    // missing or incompatible dependency: provide minimal 2D context fallback and warn
     // eslint-disable-next-line no-console
-    console.warn('jest-canvas-mock not installed; using minimal canvas shims');
+    console.warn('jest-canvas-mock not installed or failed to initialize; using minimal canvas shims');
     if (!HTMLCanvasElement.prototype.getContext) {
       HTMLCanvasElement.prototype.getContext = function (type) {
         if (type === '2d') {
