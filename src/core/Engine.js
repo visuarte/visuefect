@@ -237,9 +237,9 @@ export class VisualEngine {
             }
           }
           // remove processed events to avoid re-processing and unbounded growth
-          try { this._mojsEventLog = this._mojsEventLog.filter((ev) => ev.t > t); } catch (e) { /* silent */ }
+          try { this._mojsEventLog = this._mojsEventLog.filter((ev) => ev.t > t); } catch (e) { try { this._logError(e); logger.debug('mojsEventLog trim failed', e); } catch (err) {} }
         }
-      } catch (e) { console.warn('mojs fallback processing failed', e); }
+      } catch (e) { try { this._logError(e); logger.warn('mojs fallback processing failed', e); } catch (err) {} }
     });
 
     this.sync.subscribe('onUpdate', (dt) => {
@@ -247,16 +247,16 @@ export class VisualEngine {
       this.renderer.render(this.scene, this.camera);
 
       // Update PixiJS (Manual update para determinismo)
-      try { this.pixiApp.ticker.update(this.sync.getNormalizedDelta()); } catch (e) { /* silent */ }
+      try { this.pixiApp.ticker.update(this.sync.getNormalizedDelta()); } catch (e) { try { this._logError(e); logger.debug('Pixi ticker update failed', e); } catch (err) {} }
       // run registered pixi updaters
-      try { this._pixiUpdaters.forEach((f) => { try { f(this.sync.getNormalizedDelta()); } catch (e) {} }); } catch (e) {}
+      try { this._pixiUpdaters.forEach((f) => { try { f(this.sync.getNormalizedDelta()); } catch (e) { try { this._logError(e); logger.debug('pixi updater failed', e); } catch (err) {} } }); } catch (e) { try { this._logError(e); logger.debug('pixi updaters loop failed', e); } catch (err) {} }
 
       // Drive mo.js via detected API when possible
       try {
         if (this.mojsControlled && this._mojsUpdateFn) {
           this._mojsUpdateFn(this.sync.currentTime);
         }
-      } catch (e) { /* silent */ }
+      } catch (e) { try { this._logError(e); logger.debug('mojs update hook failed', e); } catch (err) {} }
 
       // update lastSyncTime for fallback processing
       this._lastSyncTime = this.sync.currentTime;
@@ -325,7 +325,7 @@ export class VisualEngine {
       const color = parseColor(ev.opts && ev.opts.stroke);
       // spawn a deterministic pixi emitter at the same coords
       this.addPixiEmitter(ev.x, ev.y, { color });
-    } catch (e) { console.warn('spawnPixiFromMojsEvent failed', e); }
+    } catch (e) { try { this._logError(e); logger.warn('spawnPixiFromMojsEvent failed', e); } catch (err) {} }
   }
 
   _exposeHelpers() {
@@ -341,7 +341,7 @@ export class VisualEngine {
         // bookkeeping
         try { m.__visuefect_type = 'three'; m.__visuefect_id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; this._createdEffects.three.push(m); this.effectCounts.three = this._createdEffects.three.length; } catch (e) {}
         return m;
-      } catch (e) { this._logError?.(e); console.warn('addThreeMesh failed', e); }
+      } catch (e) { try { this._logError(e); logger.warn('addThreeMesh failed', e); } catch (err) {} }
     };
 
     // simple pixi emitter / particle burst
@@ -373,7 +373,7 @@ export class VisualEngine {
         // bookkeeping
         try { container.__visuefect_type = 'pixi'; container.__visuefect_id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; this._createdEffects.pixi.push(container); this.effectCounts.pixi = this._createdEffects.pixi.length; } catch (e) {}
         return container;
-      } catch (e) { this._logError?.(e); console.warn('addPixiEmitter failed', e); }
+      } catch (e) { try { this._logError(e); logger.warn('addPixiEmitter failed', e); } catch (err) {} }
     };
 
     // add a simple mojs burst
@@ -419,7 +419,7 @@ export class VisualEngine {
         // bookkeeping
         try { burst.__visuefect_type = 'mojs'; burst.__visuefect_id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; this._createdEffects.mojs.push(burst); this.effectCounts.mojs = this._createdEffects.mojs.length; } catch (e) {}
         return burst;
-      } catch (e) { this._logError?.(e); console.warn('addMojsBurst failed', e); }
+      } catch (e) { try { this._logError(e); logger.warn('addMojsBurst failed', e); } catch (err) {} }
     };
   }
 
@@ -436,12 +436,12 @@ export class VisualEngine {
         if (this.camera) { this.camera.aspect = W / H; this.camera.updateProjectionMatrix(); }
       } catch (e) { console.warn('Three resize failed', e); }
       // Pixi
-      try { if (this.pixiApp && this.pixiApp.renderer) this.pixiApp.renderer.resize(W, H); } catch (e) { console.warn('Pixi resize failed', e); }
+      try { if (this.pixiApp && this.pixiApp.renderer) this.pixiApp.renderer.resize(W, H); } catch (e) { try { this._logError(e); logger.warn('Pixi resize failed', e); } catch (err) { /* best-effort */ } }
       // mojs overlay sizing not needed (DOM overlay is 100%)
       // store sizes
       this._W = W; this._H = H; this._dpr = dpr;
       return { W, H, dpr };
-    } catch (e) { console.warn('resize failed', e); }
+    } catch (e) { try { this._logError(e); logger.warn('resize failed', e); } catch (err) { /* best-effort */ } }
   }
 
   async exportVideo(durationFrames = 300, { muxer = null } = {}) {
@@ -496,7 +496,7 @@ export class VisualEngine {
   addPixiUpdater(fn) { if (!this._pixiUpdaters) this._pixiUpdaters = []; this._pixiUpdaters.push(fn); return fn; }
 
   // ---- effect management APIs ----
-  _logError(err) { try { this._errorLog.push({ time: Date.now(), message: err && err.message ? err.message : String(err), stack: err && err.stack ? err.stack : null }); } catch (e) { console.warn('error logging failed', e); } }
+  _logError(err) { try { this._errorLog.push({ time: Date.now(), message: err && err.message ? err.message : String(err), stack: err && err.stack ? err.stack : null }); } catch (e) { try { logger.error('error logging failed', e); } catch (err) { /* best-effort */ } } }
 
   addEffect(type = 'pixi', n = 1, opts = {}) {
     try {
@@ -572,7 +572,7 @@ export class VisualEngine {
     try { this.renderer && this.renderer.dispose(); } catch (e) {}
     try { this.pixiApp && this.pixiApp.destroy(true, { children: true, texture: true }); } catch (e) {}
     this.modules.forEach((m) => m.dispose?.());
-    console.log('♻️ VISUEFECT Engine Limpio');
+    try { logger.info('VISUEFECT Engine cleaned'); } catch (e) { /* best-effort */ }
   }
 }
 

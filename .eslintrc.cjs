@@ -13,23 +13,24 @@ module.exports = {
     sourceType: 'module'
   },
   rules: {
-    'no-console': 'off',
+    // Phase 1: move selected rules from 'off' to 'warn' to get visibility without failing CI
+    'no-console': 'warn',
     'no-underscore-dangle': 'off',
     'func-names': 'off',
-    'no-param-reassign': 'off',
+    'no-param-reassign': 'warn',
     // relax a few rules to reduce noise for existing codebase
     'max-len': 'off',
     'no-plusplus': 'off',
-    'no-empty': 'off',
+    'no-empty': 'warn',
     'import/extensions': 'off',
     'no-unused-expressions': 'off',
     'class-methods-use-this': 'off',
-    'consistent-return': 'off',
-    'no-unused-vars': 'off',
+    'consistent-return': 'warn',
+    'no-unused-vars': ['warn', { args: 'after-used', vars: 'all', ignoreRestSiblings: true }],
     'import/no-named-as-default': 'off',
     'no-await-in-loop': 'off',
     'no-restricted-syntax': 'off',
-    'no-shadow': 'off',
+    'no-shadow': 'warn',
     'no-mixed-operators': 'off',
     'no-bitwise': 'off',
     'import/prefer-default-export': 'off'

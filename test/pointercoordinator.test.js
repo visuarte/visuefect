@@ -1,10 +1,18 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import {
+  describe, it, expect, beforeEach, vi,
+} from 'vitest';
 import { PointerCoordinator } from '../src/core/PointerCoordinator.js';
 
 function makeEngine() {
   return {
-    renderer: { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } },
+    renderer: {
+      domElement: {
+        getBoundingClientRect: () => ({
+          left: 0, top: 0, width: 100, height: 100,
+        }),
+      },
+    },
     camera: {},
     scene: { children: [] },
     // provide pixi mock shape
@@ -41,7 +49,9 @@ describe('PointerCoordinator', () => {
   });
 
   it('is defensive with zero-sized DOM rect', () => {
-    engine.renderer.domElement.getBoundingClientRect = () => ({ left: 0, top: 0, width: 0, height: 0 });
+    engine.renderer.domElement.getBoundingClientRect = () => ({
+      left: 0, top: 0, width: 0, height: 0,
+    });
     const res = pc.getIntersections({ clientX: 10, clientY: 10 });
     expect(res).toBe(null);
   });

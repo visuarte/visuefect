@@ -146,7 +146,7 @@ export class SyncBridge {
 
     // after hooks
     for (const fn of Array.from(this._after)) {
-      try { fn(dt, this._time); } catch (e) { console.error('SyncBridge after hook error', e); }
+      try { fn(dt, this._time); } catch (e) { try { logger.error('SyncBridge after hook error', e); } catch (err) { /* best-effort */ } }
     }
   }
 
@@ -214,7 +214,7 @@ export class SyncBridge {
     try {
       window.requestAnimationFrame = this._origRAF;
       window.cancelAnimationFrame = this._origCancel;
-    } catch (e) { console.warn('Could not restore native RAF', e); }
+    } catch (e) { try { logger.warn('Could not restore native RAF', e); } catch (err) { /* best-effort */ } }
   }
 
   destroy() {
