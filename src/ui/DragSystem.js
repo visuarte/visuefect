@@ -5,7 +5,7 @@ import * as PIXI from 'pixi.js';
 import logger from '../utils/logger.js';
 
 // lightweight debug helper (global toggle via window.__VISUEFECT.debug)
-const _dbg = (...args) => { try { if (typeof window !== 'undefined' && window.__VISUEFECT && window.__VISUEFECT.debug) console.log(...args); } catch (e) {} };
+const _dbg = (...args) => { try { if (typeof window !== 'undefined' && window.__VISUEFECT && window.__VISUEFECT.debug) logger.debug(...args); } catch (e) { logger.debug('DragSystem debug helper error', e); } };
 
 /**
  * DragSystem — Smart parser for drag&drop with Ghost previews
@@ -199,7 +199,7 @@ export default class DragSystem {
         const ev = new CustomEvent('drag:imported', { detail: { type: 'gltf', file: f } }); window.dispatchEvent(ev);
       }
     } catch (err) {
-      console.error('3D import error', err);
+      logger.error('3D import error', err);
       URL.revokeObjectURL(url);
     }
   }
@@ -224,7 +224,7 @@ export default class DragSystem {
       setTimeout(() => { try { sprite.parent && sprite.parent.removeChild(sprite); } catch (err) {} }, 8000);
 
       window.dispatchEvent(new CustomEvent('drag:imported', { detail: { type: 'image-sequence', count: textures.length } }));
-    } catch (err) { console.error('Image seq error', err); }
+    } catch (err) { logger.error('Image seq error', err); }
   }
 
   async _handleParticleJSON(file, x, y) {
@@ -238,7 +238,7 @@ export default class DragSystem {
         this.pixiParticles && this.pixiParticles.spawnAt && this.pixiParticles.spawnAt(x + (Math.random() - 0.5) * 120, y + (Math.random() - 0.5) * 120);
       }
       window.dispatchEvent(new CustomEvent('drag:imported', { detail: { type: 'particles-json', file: file.name } }));
-    } catch (err) { console.error('Particle json error', err); }
+    } catch (err) { logger.error('Particle json error', err); }
   }
 
   // ---------- Ghost Preview helpers ----------
