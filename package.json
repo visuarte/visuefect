@@ -16,6 +16,8 @@
     "mux-server": "node tools/mux-server.js",
     "audit:fix": "npm audit fix",
     "test": "vitest",
+    "test:run": "vitest run",
+    "test:watch": "vitest" ,
     "audit:deep": "node ./scripts/audit.js"
   },
   "dependencies": {
