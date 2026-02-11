@@ -8,29 +8,36 @@ export class PointerCoordinator {
   }
 
   getIntersections(event) {
-    const rect = this.engine.renderer.domElement.getBoundingClientRect();
+    const rect = (this.engine && this.engine.renderer && this.engine.renderer.domElement && this.engine.renderer.domElement.getBoundingClientRect && this.engine.renderer.domElement.getBoundingClientRect()) || { left: 0, top: 0, width: 1, height: 1 };
+
+    // defensive: avoid division by zero
+    if (!rect.width || !rect.height) return null;
+
     this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-    // 1. Probar PixiJS (Capa superior 2D)
+    // 1. Try PixiJS (topmost 2D layer) — support different host property names
     try {
+      const pixiHost = this.engine.pixiApp || this.engine.pixi || null;
+      const pixiRenderer = pixiHost && pixiHost.renderer;
+      const pixiStage = pixiHost && (pixiHost.stage || (this.engine.pixiRoot || null));
       const pixiPoint = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-      const pixiHit = this.engine.pixi.renderer.plugins.interaction.hitTest(pixiPoint, this.engine.pixi.stage);
-      if (pixiHit && pixiHit.interactive) {
-        return { layer: 'pixi', object: pixiHit };
+      const interaction = pixiRenderer && pixiRenderer.plugins && pixiRenderer.plugins.interaction;
+      if (interaction && typeof interaction.hitTest === 'function') {
+        const pixiHit = interaction.hitTest(pixiPoint, pixiStage);
+        if (pixiHit && (pixiHit.interactive || pixiHit.isSprite || pixiHit.isDisplayObject)) {
+          return { layer: 'pixi', object: pixiHit };
+        }
       }
-    } catch (e) {
-      // Interaction plugin might not be available or hitTest signature may vary
-    }
+    } catch (e) { /* ignore pixi hit failures */ }
 
-    // 2. Probar Three.js (Capa fondo 3D)
-    this.raycaster.setFromCamera(this.mouse, this.engine.camera);
-    const intersects = this.raycaster.intersectObjects(this.engine.scene.children, true);
+    // 2. Try Three.js (3D background layer)
+    try {
+      this.raycaster.setFromCamera(this.mouse, this.engine.camera);
+      const intersects = this.raycaster.intersectObjects(this.engine.scene ? this.engine.scene.children : [], true);
+      if (intersects && intersects.length > 0) return { layer: 'three', object: intersects[0] };
+    } catch (e) { /* ignore three raycast failures */ }
 
-    if (intersects.length > 0) {
-      return { layer: 'three', object: intersects[0] };
-    }
-
-    return null; // Clic al vacío
+    return null; // click on empty space or no capable layers
   }
 }
