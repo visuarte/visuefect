@@ -4,6 +4,10 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import * as PIXI from 'pixi.js';
 import logger from '../utils/logger.js';
 
+// lightweight debug helper (global toggle via window.__VISUEFECT.debug)
+const _dbg = (...args) => { try { if (typeof window !== 'undefined' && window.__VISUEFECT && window.__VISUEFECT.debug) console.log(...args); } catch (e) {} };
+
+
 /**
  * DragSystem — Smart parser for drag&drop with Ghost previews
  * - Infers target layer (Three / Pixi / Mojs) depending on files or UI items
@@ -38,6 +42,9 @@ export default class DragSystem {
 
   init() {
     if (!this.viewport) return;
+    if (this._inited) return; // idempotent init
+    this._inited = true;
+    _dbg('DragSystem: init, viewport found');
     this.viewport.addEventListener('dragenter', this._onDragEnterBound);
     this.viewport.addEventListener('dragover', this._onDragOverBound);
     this.viewport.addEventListener('dragleave', this._onDragLeaveBound);
@@ -54,11 +61,13 @@ export default class DragSystem {
     this.viewport.removeEventListener('dragleave', this._onDragLeaveBound);
     this.viewport.removeEventListener('drop', this._onDropBound);
     this._removeGhost();
+    this._inited = false;
   }
 
   // ---------- Event Handlers ----------
   _onDragEnter(e) {
     e.preventDefault();
+    _dbg('DragSystem: dragenter', { types: e.dataTransfer && Array.from(e.dataTransfer.types || []) });
     this.viewport.classList.add('ve-dragover');
     // when drag enters, we can inspect items
     const items = e.dataTransfer ? e.dataTransfer.items : null;
@@ -71,6 +80,7 @@ export default class DragSystem {
     const x = e.clientX; const y = e.clientY;
     // infer layer quickly and show appropriate ghost
     const inferred = this._inferFromDataTransfer(e.dataTransfer);
+    _dbg('DragSystem: dragover inferred', inferred.layer);
     if (inferred.layer === 'three') {
       this._ensureGhost3D();
       this._updateGhost3D(x, y);
@@ -96,6 +106,7 @@ export default class DragSystem {
 
   async _onDrop(e) {
     e.preventDefault();
+    _dbg('DragSystem: drop', { types: e.dataTransfer && Array.from(e.dataTransfer.types || []), files: (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) || 0 });
     this.viewport.classList.remove('ve-dragover');
     this._removeGhost();
 

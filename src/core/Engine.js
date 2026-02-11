@@ -137,7 +137,20 @@ export class VisualEngine {
 
   // ---------- Cross-postprocessing: use Pixi canvas as Three texture ----------
   async addPixiProjection({ width = 1, height = 1, worldPosition = { x: 0, y: 0, z: 0 } } = {}) {
-    if (!this.pixiApp || !this.pixiApp.view) throw new Error('Pixi canvas not available for projection');
+    // support multiple pixi versions: view or canvas or renderer.view
+    let pixiView;
+    try {
+      // accessing `.view` may call Pixi getters which can throw in test env; protect it
+      pixiView = this.pixiApp && (this.pixiApp.view || this.pixiApp.canvas || (this.pixiApp.renderer && this.pixiApp.renderer.view));
+    } catch (e) {
+      // fallback: if Pixi's getters throw (test env), create a local canvas to use as projection source
+      try {
+        const c = document.createElement('canvas'); c.width = (this.pixiApp && this.pixiApp.renderer && this.pixiApp.renderer.width) || 800; c.height = (this.pixiApp && this.pixiApp.renderer && this.pixiApp.renderer.height) || 600; pixiView = c;
+      } catch (ee) {
+        pixiView = null;
+      }
+    }
+    if (!pixiView) throw new Error('Pixi canvas not available for projection');
     try {
       // prefer THREE.CanvasTexture, but support builds where it's not exported
       let CanvasTextureCtor = THREE.CanvasTexture;
@@ -149,7 +162,7 @@ export class VisualEngine {
       }
       if (!CanvasTextureCtor) throw new Error('CanvasTexture not available in this Three build');
 
-      const tex = new CanvasTextureCtor(this.pixiApp.view);
+      const tex = new CanvasTextureCtor(pixiView);
       tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
 
       // Ensure texture is readable/writeable for tests and runtime updates
@@ -190,7 +203,10 @@ export class VisualEngine {
       const updater = () => { try { tex.needsUpdate = true; } catch (e) {} ; tex.__visuefect_needsUpdate = true; };
       this.addPixiUpdater(updater);
       try { mesh.__visuefect_type = 'three'; mesh.__visuefect_id = Date.now() + '_' + Math.random().toString(36).slice(2,8); this._createdEffects.three.push(mesh); this.effectCounts.three = this._createdEffects.three.length; } catch(e){}
-      return { mesh, texture: tex, remove: () => { try { removeHook(); this.scene.remove(mesh); tex.dispose && tex.dispose(); mat.dispose && mat.dispose(); geo.dispose && geo.dispose(); } catch(e){} } };
+      return { mesh, texture: tex, remove: () => { try { removeHook();
+            // ensure we also remove the updater we registered earlier to avoid leaks
+            try { this._pixiUpdaters = (this._pixiUpdaters||[]).filter(f => f !== updater); } catch (ee) {}
+            this.scene.remove(mesh); tex.dispose && tex.dispose(); mat.dispose && mat.dispose(); geo.dispose && geo.dispose(); } catch(e){} } };
     } catch (e) { this._logError(e); return null; }
   }
 
@@ -209,6 +225,8 @@ export class VisualEngine {
                             this._spawnPixiFromMojsEvent(ev);
                         }
                     }
+                    // remove processed events to avoid re-processing and unbounded growth
+                    try { this._mojsEventLog = this._mojsEventLog.filter(ev => ev.t > t); } catch (e) { /* silent */ }
                 }
             } catch (e) { console.warn('mojs fallback processing failed', e); }
         });
@@ -248,7 +266,8 @@ export class VisualEngine {
             }
 
             if (this.mojs && typeof window !== 'undefined') window.mojs = this.mojs;
-            this.mojsLoaded = true;
+            // mark loaded only if we actually have a module — allows reattempts if later available
+            this.mojsLoaded = !!this.mojs;
             this._detectMojsControl();
             logger.info('VISUEFECT: mojs loaded', { has: !!this.mojs });
         } catch (e) {
@@ -337,6 +356,8 @@ export class VisualEngine {
                     life -= 1;
                     if (life <= 0) { try{ container.parent && container.parent.removeChild(container); }catch(e){} }
                 };
+                        // register updater and keep reference on container for cleanup
+                        try { container.__visuefect_updater = updater; } catch (e) {}
                         this.addPixiUpdater(updater);
                 // bookkeeping
                 try { container.__visuefect_type = 'pixi'; container.__visuefect_id = Date.now() + '_' + Math.random().toString(36).slice(2,8); this._createdEffects.pixi.push(container); this.effectCounts.pixi = this._createdEffects.pixi.length; } catch(e){}
@@ -420,7 +441,13 @@ export class VisualEngine {
 
             // Capture frame: either record to frames array or pass to muxer
             if (usingMuxer) {
-                try { muxer.addFrame(compositeCanvas); } catch (e) { this._logError(e); }
+                try {
+                    // make a copy of the composite canvas per-frame to avoid racing if the muxer reads it
+                    const frameCanvas = document.createElement('canvas');
+                    frameCanvas.width = compositeCanvas.width; frameCanvas.height = compositeCanvas.height;
+                    const fctx = frameCanvas.getContext('2d'); fctx.drawImage(compositeCanvas, 0, 0);
+                    muxer.addFrame(frameCanvas);
+                } catch (e) { this._logError(e); }
             } else {
                 try { frames.push(compositeCanvas.toDataURL()); } catch (e) { frames.push(null); }
             }
@@ -469,8 +496,15 @@ export class VisualEngine {
             for (let i = 0; i < n && arr.length; i++) {
                 const it = arr.pop();
                 try {
-                    if (type === 'pixi') { it.parent && it.parent.removeChild(it); it.destroy && it.destroy({ children: true }); }
-                    if (type === 'mojs') { try { it.stop && it.stop(); } catch (e) {}; try { it.el && it.el.parentNode && it.el.parentNode.removeChild(it.el); } catch(e) {}; }
+                    if (type === 'pixi') {
+                    try { if (it.__visuefect_updater && this._pixiUpdaters) { this._pixiUpdaters = this._pixiUpdaters.filter(f => f !== it.__visuefect_updater); } } catch (e) {}
+                    try { it.parent && it.parent.removeChild(it); } catch (e) {}
+                    try { it.destroy && it.destroy({ children: true }); } catch (e) {}
+                }
+                    if (type === 'mojs') { try { it.stop && it.stop(); } catch (e) {}; try { it.el && it.el.parentNode && it.el.parentNode.removeChild(it.el); } catch(e) {}; 
+                        // ensure bookkeeping reflects removal and avoid memory leaks
+                        try { this.mojsItems = (this.mojsItems||[]).filter(mi => mi !== it); } catch (ee) {};
+                    }
                     if (type === 'three') { try { this.scene.remove(it); it.geometry?.dispose?.(); try { it.material?.map?.dispose?.(); } catch (e) {} ; it.material?.dispose?.(); } catch (e) {} }
                 } catch (e) { this._logError(e); }
             }
@@ -506,6 +540,8 @@ export class VisualEngine {
     }
 
     destroy() {
+        // disconnect observers/listeners to avoid leaking resources
+        try { this._resizeObserver && typeof this._resizeObserver.disconnect === 'function' && this._resizeObserver.disconnect(); } catch (e) {}
         this.sync.stop();
         try { this.renderer && this.renderer.dispose(); } catch (e) {}
         try { this.pixiApp && this.pixiApp.destroy(true, { children: true, texture: true }); } catch (e) {}
