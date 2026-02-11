@@ -1,0 +1,61 @@
+name: E2E Smoke (src-only)
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+    types: [opened, synchronize, reopened]
+
+jobs:
+  smoke:
+    name: Smoke E2E (src changes)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [18, 20]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Start dev server
+        run: |
+          nohup npm run dev -- --port 5174 > dev-server.log 2>&1 &
+          echo $! > .devserver.pid
+
+      - name: Wait for dev server
+        run: npx wait-on http://localhost:5174/ --timeout 30000
+
+      - name: Run smoke E2E (strict)
+        run: CI=true npm run e2e:smoke
+        continue-on-error: true
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts-${{ matrix.node }}
+          path: artifacts/**
+
+      - name: Comment on PR if smoke failed
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const body = `Smoke E2E failed on Node ${process.env.RUNNER_OS || 'unknown'}. Artifacts uploaded to the workflow run: ${runUrl}`;
+            const pr = (await github.rest.pulls.list({ owner: context.repo.owner, repo: context.repo.repo, head: context.repo.owner + ':' + context.ref.replace('refs/heads/', '') })).data[0];
+            if (pr) {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number, body });
+            }
