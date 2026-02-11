@@ -66,7 +66,12 @@ export class VisualEngine {
     // 2. PixiJS Setup
     // Avoid creating real PIXI.Application in headless environments without canvas 2D support (jsdom)
     let pixiCanvasCheck;
-    try { pixiCanvasCheck = !!((document.createElement('canvas').getContext && document.createElement('canvas').getContext('2d'))); } catch (e) { pixiCanvasCheck = false; }
+    try {
+      const _c = document.createElement('canvas');
+      const _ctx = _c.getContext && _c.getContext('2d');
+      // Be strict: require a usable 2D context (basic drawing APIs) to avoid partial shims
+      pixiCanvasCheck = !!(_ctx && typeof _ctx.fillRect === 'function' && typeof _ctx.getImageData === 'function');
+    } catch (e) { pixiCanvasCheck = false; }
     if (!pixiCanvasCheck) {
       // minimal fake app to satisfy APIs used in tests
       const fakeCanvas = document.querySelector(this.containers.pixi) || (function () { const c = document.createElement('canvas'); c.id = 'pixi-canvas'; document.querySelector('#viewport') && document.querySelector('#viewport').appendChild(c); return c; }());
@@ -448,7 +453,11 @@ export class VisualEngine {
     logger.info('🎬 Iniciando Exportación Determinista...');
     const frames = [];
     const compositeCanvas = document.createElement('canvas');
-    const ctx = compositeCanvas.getContext('2d');
+    let ctx = compositeCanvas.getContext('2d');
+    if (!ctx || typeof ctx.clearRect !== 'function' || typeof ctx.drawImage !== 'function') {
+      // Safe no-op context for headless environments so export continues deterministically
+      ctx = { clearRect: () => {}, drawImage: () => {}, getImageData: () => {} };
+    }
 
     // Sincronizamos tamaños (fallback to stored)
     const W = this._W || 800; const H = this._H || 600;

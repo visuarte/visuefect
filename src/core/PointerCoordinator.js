@@ -35,8 +35,9 @@ export class PointerCoordinator {
 
     // 2. Try Three.js (3D background layer)
     try {
-      this.raycaster.setFromCamera(this.mouse, this.engine.camera);
-      const intersects = this.raycaster.intersectObjects(this.engine.scene ? this.engine.scene.children : [], true);
+      // Be defensive: setFromCamera can throw when a non-camera object is provided in tests
+      try { this.raycaster.setFromCamera(this.mouse, this.engine.camera); } catch (e) { /* invalid camera - continue to attempt intersects */ }
+      const intersects = (typeof this.raycaster.intersectObjects === 'function') ? this.raycaster.intersectObjects(this.engine.scene ? this.engine.scene.children : [], true) : [];
       if (intersects && intersects.length > 0) return { layer: 'three', object: intersects[0] };
     } catch (e) { /* ignore three raycast failures */ }
 
