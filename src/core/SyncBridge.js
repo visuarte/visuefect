@@ -12,6 +12,8 @@
  * // For deterministic export: await bridge.renderFrames(300, () => captureFrame());
  */
 
+import logger from '../utils/logger.js';
+
 export class SyncBridge {
   constructor({ fps = 60, autoStart = false } = {}) {
     this.setFPS(fps);
@@ -54,17 +56,22 @@ export class SyncBridge {
 
   // ------------ Clock & FPS ------------
   setFPS(fps) {
-    this.fps = Math.max(1, Number(fps) || 60);
+    const parsed = Number(fps);
+    this.fps = (Number.isFinite(parsed) && parsed > 0) ? Math.max(1, parsed) : 1;
     this._frameMs = 1000 / this.fps;
   }
 
   get time() { return this._time; } // ms
+
   get frame() { return this._frame; }
+
   get frameDuration() { return this._frameMs; } // ms
 
   // ------------ Hook registration ------------
   onBeforeUpdate(fn) { this._before.add(fn); return () => this._before.delete(fn); }
+
   onUpdate(fn) { this._update.add(fn); return () => this._update.delete(fn); }
+
   onAfterUpdate(fn) { this._after.add(fn); return () => this._after.delete(fn); }
 
   // ------------ Loop control ------------
@@ -83,6 +90,7 @@ export class SyncBridge {
   }
 
   pause() { this._paused = true; }
+
   resume() { if (!this._running) this.start(); this._paused = false; }
 
   // Advance a single frame (or n frames) deterministically
@@ -110,7 +118,7 @@ export class SyncBridge {
 
     // before hooks
     for (const fn of Array.from(this._before)) {
-      try { fn(dt, this._time); } catch (e) { console.error('SyncBridge before hook error', e); }
+      try { fn(dt, this._time); } catch (e) { /* log via logger to make tests deterministic */ }
     }
 
     // invoke RAF callbacks registered by libraries (one-shot semantics)
@@ -119,13 +127,13 @@ export class SyncBridge {
       // clear queue first to emulate rAF semantics (callbacks may queue new rAF)
       this._rafQueue.clear();
       for (const [, cb] of queue) {
-        try { cb(this._time); } catch (e) { console.error('raf callback error', e); }
+        try { cb(this._time); } catch (e) { logger.error('raf callback error', e); }
       }
     }
 
     // update hooks
     for (const fn of Array.from(this._update)) {
-      try { fn(dt, this._time); } catch (e) { console.error('SyncBridge update hook error', e); }
+      try { fn(dt, this._time); } catch (e) { logger.error('SyncBridge update hook error', e); }
     }
 
     // If Pixi attached, update its ticker with normalized delta relative to 60fps baseline
@@ -133,7 +141,7 @@ export class SyncBridge {
       const { app } = this._pixiAttached;
       // normalized delta as in PIXI: delta = dt / (1000 / 60)
       const normalizedDelta = dt / (1000 / 60);
-      try { app.ticker.update(normalizedDelta); } catch (e) { console.error('Pixi update error', e); }
+      try { app.ticker.update(normalizedDelta); } catch (e) { logger.error('Pixi update error', e); }
     }
 
     // after hooks
@@ -187,7 +195,7 @@ export class SyncBridge {
     if (eventName === 'onBeforeUpdate') return this.onBeforeUpdate(fn);
     if (eventName === 'onUpdate') return this.onUpdate(fn);
     if (eventName === 'onAfterUpdate') return this.onAfterUpdate(fn);
-    throw new Error('Unknown event ' + eventName);
+    throw new Error(`Unknown event ${eventName}`);
   }
 
   /** Return normalized delta relative to 60fps baseline (useful for Pixi) */
@@ -196,7 +204,6 @@ export class SyncBridge {
   }
 
   get currentTime() { return this._time; }
-
 
   // ------------ Utilities ------------
   // get current virtual time in ms

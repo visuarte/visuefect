@@ -1,15 +1,13 @@
-
-
 const DEFAULTS = {
   threeUrl: 'https://unpkg.com/three@0.154.0/build/three.module.js',
   pixiUrl: 'https://cdn.jsdelivr.net/npm/pixi.js@7.2.0/dist/browser/pixi.mjs',
   mojsUrl: 'https://cdn.jsdelivr.net/npm/@mojs/core/dist/mojs.esm.js',
-  esModuleShims: 'https://cdn.jsdelivr.net/npm/es-module-shims@1.8.1/dist/es-module-shims.min.js'
+  esModuleShims: 'https://cdn.jsdelivr.net/npm/es-module-shims@1.8.1/dist/es-module-shims.min.js',
 };
 
 export default class CodeExporter {
   constructor(opts = {}) {
-    this.opts = Object.assign({}, DEFAULTS, opts);
+    this.opts = { ...DEFAULTS, ...opts };
   }
 
   generate({ type = 'iife', params = {} } = {}) {
@@ -21,7 +19,9 @@ export default class CodeExporter {
 
   _loaderSnippet() {
     // returns a loader function string that ensures libs are available on window
-    const { threeUrl, pixiUrl, mojsUrl, esModuleShims } = this.opts;
+    const {
+      threeUrl, pixiUrl, mojsUrl, esModuleShims,
+    } = this.opts;
     return `
 async function ensureLib(url, globalName) {
   if (window[globalName]) return window[globalName];
@@ -90,7 +90,15 @@ async function ensureAll() {
     scene.add(new THREE.HemisphereLight(0xffffff, 0x080820, 0.9));
 
     // PIXI minimal init
-    const app = new PIXI.Application({ view: pixiCanvas, backgroundAlpha: 0, antialias: true, resolution: window.devicePixelRatio || 1, autoDensity: true });
+    let app;
+    try {
+      app = new PIXI.Application();
+      if (typeof app.init === 'function') {
+        app.init({ view: pixiCanvas, backgroundAlpha: 0, antialias: true, resolution: window.devicePixelRatio || 1, autoDensity: true });
+      }
+    } catch (e) {
+      app = new PIXI.Application({ view: pixiCanvas, backgroundAlpha: 0, antialias: true, resolution: window.devicePixelRatio || 1, autoDensity: true });
+    }
     app.stage.sortableChildren = true;
 
     // mojs example
@@ -116,7 +124,7 @@ async function ensureAll() {
 
     // attach export util to root for consumer
     container.__visuefect_export = { exportToVideo };
-  })().catch(e=>console.error('VISUEFECT export init failed',e));
+  })().catch(e=>{ try { globalThis.logger?.error ? globalThis.logger.error('VISUEFECT export init failed', e) : console.error('VISUEFECT export init failed', e); } catch (er) { console.error('VISUEFECT export init failed', e); } });
 })();`;
   }
 
@@ -147,7 +155,16 @@ export default function VisuefectSnapshot(props) {
       const renderer = new THREE.WebGLRenderer({ canvas: threeCanvas, antialias:true, alpha:true }); renderer.setPixelRatio(window.devicePixelRatio||1);
       const scene = new THREE.Scene(); const cam = new THREE.PerspectiveCamera(60,1,0.1,1000); cam.position.set(0,0,3);
       const geo = new THREE.TorusKnotGeometry(0.7,0.22,128,24); const mat = new THREE.MeshStandardMaterial({ color: PRESET.color || 0x00f0ff }); const mesh = new THREE.Mesh(geo, mat); scene.add(mesh);
-      const app = new PIXI.Application({ view: pixiCanvas, backgroundAlpha:0, antialias:true, resolution:window.devicePixelRatio||1, autoDensity:true }); app.stage.sortableChildren = true;
+      let app;
+    try {
+      app = new PIXI.Application();
+      if (typeof app.init === 'function') {
+        app.init({ view: pixiCanvas, backgroundAlpha:0, antialias:true, resolution:window.devicePixelRatio||1, autoDensity:true });
+      }
+    } catch (e) {
+      app = new PIXI.Application({ view: pixiCanvas, backgroundAlpha:0, antialias:true, resolution:window.devicePixelRatio||1, autoDensity:true });
+    }
+    app.stage.sortableChildren = true;
 
       const resize = ()=>{ const rect = container.getBoundingClientRect(); const W=Math.max(1,Math.floor(rect.width)); const H=Math.max(1,Math.floor(rect.height)); renderer.setSize(W,H,false); cam.aspect=W/H; cam.updateProjectionMatrix(); app.renderer.resize(W,H); } ; new ResizeObserver(resize).observe(container); resize();
 
@@ -183,7 +200,16 @@ ${loader}
       this._scene = new THREE.Scene(); this._cam = new THREE.PerspectiveCamera(60,1,0.1,1000); this._cam.position.set(0,0,3);
       const geo = new THREE.TorusKnotGeometry(0.7,0.22,128,24); const mat = new THREE.MeshStandardMaterial({ color: PRESET.color || 0x00f0ff }); const mesh = new THREE.Mesh(geo, mat); this._scene.add(mesh);
 
-      this._pixi = new PIXI.Application({ view: pixiCanvas, backgroundAlpha:0, antialias:true, resolution:window.devicePixelRatio||1, autoDensity:true }); this._pixi.stage.sortableChildren = true;
+      let app;
+      try {
+        app = new PIXI.Application();
+        if (typeof app.init === 'function') {
+          app.init({ view: pixiCanvas, backgroundAlpha:0, antialias:true, resolution:window.devicePixelRatio||1, autoDensity:true });
+        }
+      } catch (e) {
+        app = new PIXI.Application({ view: pixiCanvas, backgroundAlpha:0, antialias:true, resolution:window.devicePixelRatio||1, autoDensity:true });
+      }
+      this._pixi = app; this._pixi.stage.sortableChildren = true;
 
       const resize = ()=>{ const rect = this._container.getBoundingClientRect(); const W=Math.max(1,Math.floor(rect.width)); const H=Math.max(1,Math.floor(rect.height)); this._renderer.setSize(W,H,false); this._cam.aspect = W/H; this._cam.updateProjectionMatrix(); this._pixi.renderer.resize(W,H); }; new ResizeObserver(resize).observe(this._container); resize();
 

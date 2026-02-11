@@ -9,11 +9,15 @@
   "scripts": {
     "setup": "npm ci",
     "check": "npm run lint --silent || true",
+    "lint": "eslint \"src/**\" \"test/**\" --ext .js",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "mux-server": "node tools/mux-server.js",
     "audit:fix": "npm audit fix",
     "test": "vitest",
+    "test:run": "vitest run",
+    "test:watch": "vitest" ,
     "audit:deep": "node ./scripts/audit.js"
   },
   "dependencies": {
@@ -23,6 +27,11 @@
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
+    "@vitest/coverage-v8": "^4.0.18",
+    "eslint": "^8.50.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.29.6",
+    "prettier": "^2.10.0",
     "jsdom": "^28.0.0",
     "vite": "^7.3.1",
     "vitest": "^4.0.18"

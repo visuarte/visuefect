@@ -8,7 +8,7 @@
   <style>
     :root{
       --bg:#07070b; --panel:#0f1020; --card:#151623;
-      --cyan:#00f0ff; --mag:#ff00a0; --accent:#8b63ff; --muted:#9aa0ad; --glass:rgba(255,255,255,0.03);
+      --cyan:#00f0ff; --mag:#ff2f00; --accent:#8b63ff; --muted:#9aa0ad; --glass:rgba(255,255,255,0.03);
     }
 
     *{box-sizing:border-box;margin:0;padding:0}
@@ -77,6 +77,7 @@
         <button class="step-btn btn" data-step="1">Atmosphere</button>
         <button class="step-btn btn" data-step="2">Dynamics</button>
         <button class="step-btn btn" data-step="3">Accents</button>
+        <button id="debug-toggle" class="btn" title="Toggle debug logs" style="margin-left:auto">Debug: Off</button>
       </div>
 
       <div class="controls" role="region" aria-label="Parámetros de efectos">
@@ -145,7 +146,7 @@
             </div>
           </div>
           <textarea id="code-output" readonly style="width:100%;height:130px;margin-top:8px;font-family:monospace;font-size:11px;background:#05050a;color:#dbeaff;border-radius:6px;padding:8px;border:none"></textarea>
-          <div style="display:flex;gap:8px;margin-top:8px"><button id="export-video" class="btn">Exportar 5s</button></div>
+          <div style="display:flex;gap:8px;margin-top:8px"><button id="export-video" class="btn">Exportar 5s</button><button id="download-chunks" class="btn">Guardar Chunks</button><button id="upload-chunks" class="btn">Enviar Chunks</button><button id="export-frames-upload" class="btn">Exportar frames y subir (FFmpeg)</button></div>
         </div>
       </div>
 

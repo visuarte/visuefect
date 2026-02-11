@@ -1,22 +1,24 @@
 /** @vitest-environment jsdom */
-import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
-
-// Mock mojs to avoid DOM heavy internals
-vi.mock('@mojs/core', () => {
-  return {
-    default: {
-      Burst: class {
-        constructor(opts) { this.opts = opts; this.el = document.createElement('div'); }
-        play() { this._played = true; }
-        stop() { this._played = false; }
-      },
-      Tween: { update: () => {} },
-      reducers: { update: () => {} }
-    }
-  };
-});
+import {
+  beforeEach, afterEach, describe, it, expect, vi,
+} from 'vitest';
 import mojs from '@mojs/core';
 import VisualEngine from '../src/core/Engine.js';
+
+// Mock mojs to avoid DOM heavy internals
+vi.mock('@mojs/core', () => ({
+  default: {
+    Burst: class {
+      constructor(opts) { this.opts = opts; this.el = document.createElement('div'); }
+
+      play() { this._played = true; }
+
+      stop() { this._played = false; }
+    },
+    Tween: { update: () => {} },
+    reducers: { update: () => {} },
+  },
+}));
 
 describe('VisualEngine basic effects API', () => {
   let engine;

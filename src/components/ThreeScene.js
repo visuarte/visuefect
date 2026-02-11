@@ -7,7 +7,7 @@ import * as THREE from 'three';
  * - Devuelve { dispose } para limpiar
  */
 export default function ThreeScene(engine, opts = {}) {
-  const cfg = Object.assign({ color: 0x00f0ff }, opts);
+  const cfg = { color: 0x00f0ff, ...opts };
 
   // create mesh
   const geo = new THREE.TorusKnotGeometry(0.7, 0.22, 128, 24);
@@ -43,7 +43,7 @@ export default function ThreeScene(engine, opts = {}) {
 
     // subtle vertex wobble (CPU, cost low for this geom)
     const pos = geo.attributes.position;
-    const count = pos.count;
+    const { count } = pos;
     for (let i2 = 0; i2 < count; i2++) {
       const ix = i2 * 3;
       const ox = pos.array[ix];
@@ -61,9 +61,9 @@ export default function ThreeScene(engine, opts = {}) {
     material: mat,
     dispose() {
       // remove updater
-      if (engine._threeUpdaters) engine._threeUpdaters = engine._threeUpdaters.filter(f => f !== updater);
+      if (engine._threeUpdaters) engine._threeUpdaters = engine._threeUpdaters.filter((f) => f !== updater);
       try { engine.scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose(); } catch (e) { /* swallow */ }
       try { engine.scene.remove(light); } catch (e) {}
-    }
+    },
   };
 }

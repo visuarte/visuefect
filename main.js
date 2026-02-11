@@ -97,7 +97,7 @@ async function main() {
   function _showTemporaryGhost(cx, cy) {
     // pixi ghost
     try {
-      const g = new PIXI.Graphics(); g.beginFill(0x00f0ff, 0.12); g.drawCircle(0,0,48); g.endFill(); g.x = cx; g.y = cy; g.alpha = 0.95; g.blendMode = PIXI.BLEND_MODES.ADD; engine.pixiRoot.addChild(g);
+      const g = new PIXI.Graphics(); try { g.fill({ color: 0x00f0ff, alpha: 0.12 }); g.circle(0,0,48); } catch (e) { g.beginFill(0x00f0ff, 0.12); g.drawCircle(0,0,48); g.endFill(); } g.x = cx; g.y = cy; g.alpha = 0.95; g.blendMode = PIXI.BLEND_MODES.ADD; engine.pixiRoot.addChild(g);
       setTimeout(()=>{ try{ g.parent && g.parent.removeChild(g); g.destroy?.(); } catch(e){} }, 1200);
     } catch (e) {}
     // three ghost
@@ -162,9 +162,25 @@ async function main() {
     // Prefer WebCodecs when available (POC) but fallback to MediaRecorder captureStream
     if (window.VideoEncoder && window.VideoFrame) {
       console.log('Using WebCodecs POC for encoding');
-      const chunks = [];
+      const serializedChunks = [];
       const encoder = new VideoEncoder({
-        output: (chunk) => chunks.push(chunk),
+        output: (chunk) => {
+          try {
+            let arr = null;
+            if (typeof chunk.copyTo === 'function') {
+              arr = new Uint8Array(chunk.byteLength);
+              chunk.copyTo(arr);
+            } else if (chunk.data) {
+              arr = new Uint8Array(chunk.data);
+            } else {
+              arr = new Uint8Array(0);
+            }
+            // base64 encode
+            let b64 = '';
+            try { b64 = btoa(String.fromCharCode.apply(null, arr)); } catch (e) { try { b64 = Buffer.from(arr).toString('base64'); } catch (er) { b64 = ''; } }
+            serializedChunks.push({ timestamp: chunk.timestamp, type: chunk.type, data: b64 });
+          } catch (e) { console.warn('chunk serialization failed', e); serializedChunks.push({ timestamp: chunk.timestamp, type: chunk.type, data: '' }); }
+        },
         error: (e) => console.error('VideoEncoder error', e)
       });
       encoder.configure({ codec: 'vp8', width: W, height: H });
@@ -183,15 +199,18 @@ async function main() {
         const vf = new VideoFrame(bitmap, { timestamp: ts });
         encoder.encode(vf, { keyFrame: i % Math.round(fps/2) === 0 });
         vf.close(); bitmap.close();
+        // also collect per-frame PNG for optional server muxing/debugging
+        try { if (typeof off.toDataURL === 'function') serializedChunks.__frames = serializedChunks.__frames || []; serializedChunks.__frames.push(off.toDataURL('image/png')); } catch (e) { /* offscreen can't toDataURL */ }
       });
       engine.enableMojsFallback(false);
 
       await encoder.flush(); encoder.close();
-      // Note: chunks need muxing into a playable container (beyond this POC)
-      const totalBytes = chunks.reduce((s,c)=>s+c.byteLength,0);
-      alert(`WebCodecs produced ${chunks.length} chunks (~${Math.round(totalBytes/1024)} KB). See console.`);
-      console.log('WebCodecs chunks:', chunks);
-      return chunks;
+      // store and expose serializable chunks
+      try { window.__VISUEFECT = window.__VISUEFECT || {}; window.__VISUEFECT.lastEncodedChunks = serializedChunks; } catch (e) {}
+      const totalBytes = serializedChunks.reduce((s,c)=>s.data ? s.data.length : 0,0);
+      alert(`WebCodecs produced ${serializedChunks.length} chunks (~${Math.round(totalBytes/1024)} KB). See console.`);
+      console.log('WebCodecs chunks (serialized):', serializedChunks);
+      return serializedChunks;
     } else {
       console.log('Using MediaRecorder deterministic capture');
       const stream = (off.captureStream) ? off.captureStream(fps) : null;
@@ -231,12 +250,58 @@ async function main() {
     }
   }
 
+  // export button
   if (exportBtn) exportBtn.addEventListener('click', async () => {
     try {
       exportBtn.disabled = true; exportBtn.textContent = 'Exportando...';
       await exportVideoDeterministic(5, 60);
     } catch (e) { console.error('Export failed', e); showErrorToast(e && e.message ? e.message : String(e)); }
     exportBtn.disabled = false; exportBtn.textContent = 'Exportar 5s';
+  });
+
+  // chunk/frame actions
+  const dlChunksBtn = document.getElementById('download-chunks');
+  const uploadChunksBtn = document.getElementById('upload-chunks');
+  const exportFramesUploadBtn = document.getElementById('export-frames-upload');
+  if (dlChunksBtn) dlChunksBtn.addEventListener('click', () => {
+    try { const ch = (window.__VISUEFECT && window.__VISUEFECT.lastEncodedChunks) || []; import('./src/utils/chunksManager.js').then(mod => { mod.downloadChunksAsJson(ch, 'visuefect_chunks'); showStatus('Chunks guardados'); }).catch(e=>showErrorToast('Guardar chunks falló')) } catch (e) { showErrorToast('Guardar chunks falló'); }
+  });
+
+  if (uploadChunksBtn) uploadChunksBtn.addEventListener('click', async () => {
+    try {
+      const ch = (window.__VISUEFECT && window.__VISUEFECT.lastEncodedChunks) || [];
+      const url = window.prompt('Endpoint para subir chunks (ej: http://localhost:3001/api/mux/upload-chunks):', 'http://localhost:3001/api/mux/upload-chunks');
+      if (!url) return showErrorToast('Upload cancelled');
+      const mod = await import('./src/utils/chunksManager.js');
+      const res = await mod.uploadChunks(url, ch, { width: engine._W, height: engine._H, fps: 60 });
+      console.log('Upload response', res); showStatus('Chunks enviados');
+    } catch (e) { console.error('Upload failed', e); showErrorToast('Upload failed'); }
+  });
+
+  if (exportFramesUploadBtn) exportFramesUploadBtn.addEventListener('click', async () => {
+    try {
+      showStatus('Exportando frames...');
+      const rect = engine.viewport.getBoundingClientRect(); const W = Math.max(1, Math.floor(rect.width)); const H = Math.max(1, Math.floor(rect.height));
+      // collect frames using existing export path but request frame collection
+      const frames = [];
+      const duration = 3; const fps = 30; const frameCount = Math.floor(duration * fps);
+      // reuse offscreen approach
+      const off = document.createElement('canvas'); off.width = W; off.height = H; const ctx = off.getContext('2d');
+      await engine.sync.renderFrames(frameCount, async (i) => {
+        ctx.clearRect(0,0,W,H);
+        try { const bm = await createImageBitmap(document.getElementById('three-canvas')); ctx.drawImage(bm,0,0,W,H); bm.close(); } catch (e) {}
+        try { const bm2 = await createImageBitmap(document.getElementById('pixi-canvas')); ctx.drawImage(bm2,0,0,W,H); bm2.close(); } catch (e) {}
+        const png = off.toDataURL('image/png'); frames.push(png);
+      });
+      // upload frames
+      const url = window.prompt('Endpoint para subir frames (ej: http://localhost:3001/api/mux/upload-frames):', 'http://localhost:3001/api/mux/upload-frames');
+      if (!url) return showErrorToast('Upload cancelled');
+      const mod = await import('./src/utils/chunksManager.js');
+      const blob = await mod.uploadFramesAsZip(url, frames, fps);
+      // offer download of returned blob
+      try { const downUrl = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = downUrl; a.download = 'visuefect_from_frames.webm'; a.click(); URL.revokeObjectURL(downUrl); } catch (e) {}
+      showStatus('Frames enviados y procesados');
+    } catch (e) { console.error('Frames upload failed', e); showErrorToast('Frames upload failed'); }
   });
 
   // --- Error / Toast handling ---
