@@ -23,6 +23,15 @@ async function ensureDir(p) { try { await fs.promises.mkdir(p, { recursive: true
     try { fs.appendFileSync(CONSOLE_LOG, text); } catch (e) {}
     // Mark severity for error handling
     try { if (msg.type && (msg.type() === 'error' || msg.type() === 'assert')) errorsDetected = true; } catch (e) {}
+
+    // Treat explicit 404 resource failures and Pixi deprecation warnings as CI-level errors
+    try {
+      const t = msg.text && msg.text();
+      if (t && (/Failed to load resource: the server responded with a status of 404/.test(t) || /PixiJS Deprecation Warning/.test(t))) {
+        errorsDetected = true;
+        try { fs.appendFileSync(CONSOLE_LOG, `[console.detectedSeverity] ${t}\n`); } catch (e) {}
+      }
+    } catch (e) {}
   });
   page.on('pageerror', err => {
     const text = `[pageerror] ${err.stack || err.message}\n`;
